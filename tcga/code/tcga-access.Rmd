@@ -1,0 +1,31 @@
+---
+title: "TCGA-access.Rmd"
+output: html_document
+---
+
+
+```{r}
+library(TCGAbiolinks)
+library(DT)
+```
+
+```{r}
+# Gene expression (hg38)
+query <- GDCquery(project = "TCGA-BRCA",
+                  data.category = "Transcriptome Profiling",
+                  data.type = "Gene Expression Quantification")
+
+GDCdownload(query, method = "api", files.per.chunk = 10)
+```
+
+%NOT EXECTUED YET%
+```{r}
+# Variant files (hg38) 
+query <- GDCquery(project = "TCGA-BRCA",
+                  data.category = "Simple Nucleotide Variation",
+                  #data.type = "Gene Expression Quantification",
+                  #workflow.type = "HTSeq - Counts",
+                  barcode = "TCGA-E9-A1NG-11A-52R-A14M-07")
+
+GDCdownload(query, method = "api", files.per.chunk = 10)
+```

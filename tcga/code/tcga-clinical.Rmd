@@ -1,0 +1,64 @@
+---
+title: "TCGA-Clinical"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# fetch clinical data
+library(RTCGA)
+library(dplyr)
+
+library(TCGAbiolinks)
+library(DT)
+```
+
+```{r}
+# if we'd like to have a list of all cohorts using RTCGA
+(all_cohorts <- infoTCGA() %>% 
+   rownames() %>% 
+   sub("-counts", "", x=.))
+
+#all_cohorts <- c('ACC', 'BLCA', 'BRCA', 'CESC', 'CHOL', 'COAD', 'COADREAD', 'DLBC', 'ESCA', 'FPPP', 'GBM', 'GBMLGG', 'HNSC', 'KICH', 'KIPAN', 'KIRC', 'KIRP', 'LAML', 'LGG',  
+#                'LIHC', 'LUAD', 'LUSC', 'MESO', 'OV', 'PAAD', 'PCPG', 'PRAD', 'READ', 'SARC',  'SKCM', 'STAD', 'STES', 'TGCT', 'THCA', 'THYM', 'UCEC', 'UCS', 'UVM')
+select_cohorts <- c('BRCA', 'LUAD', 'LUSC', 'PRAD', 'LIHC', 'CHOL', 'MESO', 'DLBC')
+```
+
+```{r}
+# Fetch clinical data using RTCGA (2016-01-28)
+release_dates <- c("2016-01-28") # for all dates use checkTCGA('Dates') 
+for(release_date in release_dates){
+  sapply(all_cohorts, function(cohort){
+    tryCatch({
+    downloadTCGA(cancerTypes = cohort, destDir = "clinical_data", date = release_date)},
+  error = function(cond){
+     cat("Error: Maybe there weren't clinical data for ", cohort, " in the", release_date, " release.\n")
+  })})
+}
+```
+
+
+```{r}
+# Fetch clinical data using TCGAbiolinks (~ equivalent wrt # of cases samples); 
+# See http://bioconductor.org/packages/release/bioc/vignettes/TCGAbiolinks/inst/doc/clinical.html for additional data description
+sapply(paste("TCGA", all_cohorts, sep="-"), function(cohort){
+  clinical_clin <- GDCquery_clinic(project = cohort, type = "clinical")
+  datatable(clinical_clin, filter = 'top', 
+            options = list(scrollX = TRUE, keys = TRUE, pageLength = 5),  
+            rownames = FALSE)
+  clinical_clin_filename <- paste(paste("clinical", "clin", cohort, format(Sys.Date(), format="%B%d%Y"), sep="_"), "csv", sep=".")
+  write.table(clinical_clin, file=clinical_clin_filename, col.names=T, row.names=F, sep=",")
+
+  clinical_biospec <- GDCquery_clinic(project = cohort, type = "biospecimen")
+  clinical_biospec$portions <- as.character(clinical_biospec$portions) # to flatten the list column and write to file
+  
+  datatable(clinical_biospec, filter = 'top', 
+            options = list(scrollX = TRUE, keys = TRUE, pageLength = 5),  
+            rownames = FALSE)
+  clinical_biospec_filename <- paste(paste("clinical", "biospec", cohort, format(Sys.Date(), format="%B%d%Y"), sep="_"), "csv", sep=".")
+  write.table(clinical_biospec, file=clinical_biospec_filename, col.names=T, row.names=F, sep=",")
+})
+```

@@ -1,0 +1,19 @@
+---
+title: "extract_pathways"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(StarBioTrek)
+```
+
+```{r}
+species="hsapiens"
+pathwaydb="nci"
+pathways <- GetData(species, pathwaydb)
+
+#get genes in all pathways + save in file
+pathway_ALLGENE <- GetPathData(path_ALL=pathways)
+capture.output(pathway_ALLGENE, file="NCI_Pathways_StarBioTrek_May7_2019.txt")
+```
