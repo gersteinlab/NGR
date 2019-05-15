@@ -33,7 +33,7 @@ release_dates <- c("2016-01-28") # for all dates use checkTCGA('Dates')
 for(release_date in release_dates){
   sapply(all_cohorts, function(cohort){
     tryCatch({
-    downloadTCGA(cancerTypes = cohort, destDir = "clinical_data", date = release_date)},
+    downloadTCGA(cancerTypes = cohort, destDir = ".", date = release_date)},
   error = function(cond){
      cat("Error: Maybe there weren't clinical data for ", cohort, " in the", release_date, " release.\n")
   })})
@@ -44,7 +44,10 @@ for(release_date in release_dates){
 ```{r}
 # Fetch clinical data using TCGAbiolinks (~ equivalent wrt # of cases samples); 
 # See http://bioconductor.org/packages/release/bioc/vignettes/TCGAbiolinks/inst/doc/clinical.html for additional data description
-sapply(paste("TCGA", all_cohorts, sep="-"), function(cohort){
+
+select_cohorts <- c('BRCA', 'LUAD', 'LUSC', 'PRAD', 'LIHC', 'CHOL', 'MESO', 'DLBC')
+
+sapply(paste("TCGA", select_cohorts, sep="-"), function(cohort){
   clinical_clin <- GDCquery_clinic(project = cohort, type = "clinical")
   datatable(clinical_clin, filter = 'top', 
             options = list(scrollX = TRUE, keys = TRUE, pageLength = 5),  
