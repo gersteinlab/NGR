@@ -14,6 +14,41 @@ pathwaydb="nci"
 pathways <- GetData(species, pathwaydb)
 
 #get genes in all pathways + save in file
-pathway_ALLGENE <- GetPathData(path_ALL=pathways)
-capture.output(pathway_ALLGENE, file="NCI_Pathways_StarBioTrek_May7_2019.txt")
+pathway_ALLGENE <- ConvertedIDgenes(path_ALL=pathways)
+pathway_ALLGENE <- pathway_ALLGENE[sort(names(pathway_ALLGENE))]
+
+capture.output(pathway_ALLGENE, file="NCI_Pathways_StarBioTrek_May19_2019.txt")
+```
+
+```{r}
+# exploratory analysis
+gene_symbols <- vector() # list of all genes in pathways of interest
+for(pathway_genes in pathway_ALLGENE)
+  gene_symbols <- union(gene_symbols, pathway_genes)
+
+gene_symbols <- sort(gene_symbols)
+
+# each row corresponds to a gene, column to pathway
+gene_pathway_df <- as.data.frame(matrix(rep(0, length(pathway_ALLGENE)*length(gene_symbols)), 
+                                        nrow=length(pathway_ALLGENE)))
+
+rownames(gene_pathway_df) <- names(pathway_ALLGENE)
+colnames(gene_pathway_df) <- gene_symbols
+
+for(p in 1:length(pathway_ALLGENE)){
+  member_genes <- which(gene_symbols %in% unlist(pathway_ALLGENE[p]))
+  gene_pathway_df[p, member_genes] <- 1 # update pathway membership
+}
+```
+
+```{r}
+# Basic statistics
+min(sapply(pathway_ALLGENE, length))
+max(sapply(pathway_ALLGENE, length))
+
+gene_membership <- sort(colSums(gene_pathway_df), decreasing=T)
+head(gene_membership)
+
+pathway_size <- sort(rowSums(gene_pathway_df), decreasing=T)
+head(pathway_size)
 ```
