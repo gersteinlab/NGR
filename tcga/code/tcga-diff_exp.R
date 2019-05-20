@@ -40,12 +40,7 @@ for(i in 1:length(cancer_types)){
       # order oclumns of healthy and tumor (resulting data frame has both samples and genes in the same order)
       h_counts <- h_counts[, order(substr(colnames(h_counts), 9, 12))]
       t_counts <- t_counts[, order(substr(colnames(t_counts), 9, 12))]
-      
-      # sample
-      gene_symbols <- gene_symbols[1:5]
-      h_counts <- h_counts[1:5, order(substr(colnames(h_counts), 9, 12))]
-      t_counts <- t_counts[1:5, order(substr(colnames(t_counts), 9, 12))]
-      
+
       # merge healthy and tumor, create DGEList object
       counts <- cbind(h_counts, t_counts)[, order(c(seq(ncol(h_counts)), seq(ncol(t_counts))))] # alternate columns in cbind (to match designMatrix below)
       dgList <- DGEList(counts=counts, genes=gene_symbols)
