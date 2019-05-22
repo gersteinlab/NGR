@@ -3,6 +3,7 @@ library(edgeR)
 # Tutorial: https://bioinformatics-core-shared-training.github.io/cruk-bioinf-sschool/Day3/rnaSeq_DE.pdf
 expression_data_dir <- '../expression_data/'
 cancer_types <- c('brca', 'luad', 'lusc', 'prad', 'lihc', 'chol', 'meso', 'dlbc')
+#cancer_types <- c('brca')
 tumor_exp_files <- c(paste(expression_data_dir, cancer_types, '-rsem-count-tcga-t.txt', sep=''))
 healthy_exp_files <- c(paste(expression_data_dir, cancer_types, '-rsem-count-tcga.txt', sep=''))
 
@@ -41,8 +42,13 @@ for(i in 1:length(cancer_types)){
       h_counts <- h_counts[, order(substr(colnames(h_counts), 9, 12))]
       t_counts <- t_counts[, order(substr(colnames(t_counts), 9, 12))]
 
+      #h_counts <- h_counts[1:6, 1:6]	
+      #t_counts <- t_counts[1:6, 1:6]
+      #gene_symbols <- gene_symbols[1:6]
+
       # merge healthy and tumor, create DGEList object
       counts <- cbind(h_counts, t_counts)[, order(c(seq(ncol(h_counts)), seq(ncol(t_counts))))] # alternate columns in cbind (to match designMatrix below)
+      
       dgList <- DGEList(counts=counts, genes=gene_symbols)
       
       print(paste("dgList object created. ", "[", Sys.time(), "]", sep=""))
@@ -94,6 +100,7 @@ for(i in 1:length(cancer_types)){
       save.image(paste(cancer_types[i], "checkpoint6.RData", sep="_"))
   }, error = function(e) {
       print(paste("Error with ", cancer_types[i], sep=""))
+      print(e)
   })
 }
 
