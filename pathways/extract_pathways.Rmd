@@ -7,52 +7,74 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(StarBioTrek)
 library(ggplot2)
+library(DescTools)
+library(reshape2)
 source('../base/plotting.R')
 ```
 
 ```{r}
 species="hsapiens"
-pathwaydb="nci"
-pathways <- GetData(species, pathwaydb)
+pathwaydb= "reactome" #"nci" #"kegg"  #"biocarta" 
+#pathways <- GetData(species, pathwaydb)
 
-#get genes in all pathways + save in file
-pathway_ALLGENE <- ConvertedIDgenes(path_ALL=pathways)
-pathway_ALLGENE <- pathway_ALLGENE[sort(names(pathway_ALLGENE))]
+# #get genes in all pathways + save in file
+# pathway_ALLGENE <- ConvertedIDgenes(path_ALL=pathways)
+# pathway_ALLGENE <- pathway_ALLGENE[sort(names(pathway_ALLGENE))]
+```
 
-capture.output(pathway_ALLGENE, file="NCI_Pathways_StarBioTrek_May19_2019.txt")
+```{r}
+capture.output(pathway_ALLGENE, file=paste(pathwaydb, "_Pathways_StarBioTrek_", Sys.Date(), ".txt", sep=""))
 ```
 
 ```{r}
 # exploratory analysis
 gene_symbols <- vector() # list of all genes in pathways of interest
-for(pathway_genes in pathway_ALLGENE)
-  gene_symbols <- union(gene_symbols, pathway_genes)
+p <- 1
+for(pathway_genes in pathway_ALLGENE){
+  if(length(pathway_genes) > 0)
+    gene_symbols <- union(gene_symbols, pathway_genes)
+  else{
+    print(paste(names(pathway_ALLGENE)[p], " removed [empty list].", sep=""))
+    pathway_ALLGENE[p] <- NULL
+    p <- p-1
+  }
+    
+  p <- p+1
+}
 
 gene_symbols <- sort(gene_symbols)
 
 # each row corresponds to a gene, column to pathway
-gene_pathway_df <- as.data.frame(matrix(rep(0, length(pathway_ALLGENE)*length(gene_symbols)), 
+pathway_gene_df <- as.data.frame(matrix(rep(0, length(pathway_ALLGENE)*length(gene_symbols)), 
                                         nrow=length(pathway_ALLGENE)))
 
-rownames(gene_pathway_df) <- names(pathway_ALLGENE)
-colnames(gene_pathway_df) <- gene_symbols
+rownames(pathway_gene_df) <- names(pathway_ALLGENE)
+colnames(pathway_gene_df) <- gene_symbols
 
 for(p in 1:length(pathway_ALLGENE)){
   member_genes <- which(gene_symbols %in% unlist(pathway_ALLGENE[p]))
-  gene_pathway_df[p, member_genes] <- 1 # update pathway membership
+  pathway_gene_df[p, member_genes] <- 1 # update pathway membership
 }
+
+# write matrix to file
+write.table(pathway_gene_df, file=paste(pathwaydb, "_pathway_gene_matrix_", Sys.Date(), ".txt", sep=""), row.names=T, col.names=T, quote=F)
 ```
 
 ```{r}
 # Basic statistics
+length(pathway_ALLGENE)
+length(gene_symbols)
+
 min(sapply(pathway_ALLGENE, length))
 max(sapply(pathway_ALLGENE, length))
 
-gene_membership <- sort(colSums(gene_pathway_df), decreasing=T)
-head(gene_membership)
+pathway_size <- sort(rowSums(pathway_gene_df), decreasing=T)
+tail(pathway_size, 1)
+head(pathway_size, 1)
 
-pathway_size <- sort(rowSums(gene_pathway_df), decreasing=T)
-head(pathway_size)
+gene_membership <- sort(colSums(pathway_gene_df), decreasing=T)
+tail(gene_membership, 1)
+head(gene_membership, 1)
 ```
 
 ```{r}
@@ -64,25 +86,45 @@ pp + ggtitle('Distribution of Pathway Size') + xlab('Number of Genes') + ylab('F
 ```
 
 ```{r}
-n_pathways <- nrow(gene_pathway_df)
-pathway_pathway_df <- as.data.frame(matrix(rep(0, n_pathways^2), nrow=n_pathways))
-pairs <- t(combn(n_pathways, 2))
+# Pathway-pathway intersection: Efficiently using PairApply of DescTools
+n_pathways <- nrow(pathway_gene_df)
 
-pathway_pathway_df[1, 1] <- sum(gene_pathway_df[1, ])
-for(i in 1:nrow(pairs)){
-  pr = pairs[i, ]
-  pathway_membership_sum <- gene_pathway_df[pr[1], ] + gene_pathway_df[pr[2], ] # element wise sum of binary vectors
-  pathway_pathway_intersection = sum(pathway_membership_sum == 2) # counting number of intersections (~AND operation)
-
-  pathway_pathway_df[pr[1], pr[2]] <- pathway_pathway_intersection # update intersection values
-  pathway_pathway_df[pr[2], pr[1]] <- pathway_pathway_intersection
-  
-  if(pathway_pathway_df[pr[2], pr[2]] == 0)
-    pathway_pathway_df[pr[2], pr[2]] <- sum(gene_pathway_df[pr[2], ]) # update diagonal (reflexive) values
-  
-  if(i %% 100 == 0)
-    print(paste(i, " out of ", nrow(pairs), " processed.", sep=""))
+# x and y are two binary vectors (gene membership in pathways)
+# PairApply applies pairwise column operations, we use transpose of pathway_gene_df
+calc_intersection <- function(x, y){
+  pathway_membership_sum <- x+y
+  pathway_pathway_intersection <- sum(pathway_membership_sum == 2)
+  return(pathway_pathway_intersection)
 }
+
+pathway_pathway_df <- as.data.frame(PairApply(t(pathway_gene_df), FUN=calc_intersection))
+
+# write matrix to file
+write.table(pathway_pathway_df, file=paste(pathwaydb, "_pathway_pathway_matrix_", Sys.Date(), ".txt", sep=""), row.names=T, col.names=T, quote=F)
+```
+
+
+```{r}
+# Pathway-pathway intersection using permutations + for loop for pairwise comparisons; considerably less efficient than the one above 
+# n_pathways <- nrow(pathway_gene_df)
+# pathway_pathway_df <- as.data.frame(matrix(rep(0, n_pathways^2), nrow=n_pathways))
+# pairs <- t(combn(n_pathways, 2))
+# 
+# pathway_pathway_df[1, 1] <- sum(pathway_gene_df[1, ])
+# for(i in 1:nrow(pairs)){
+#   pr = pairs[i, ]
+#   pathway_membership_sum <- pathway_gene_df[pr[1], ] + pathway_gene_df[pr[2], ] # element wise sum of binary vectors
+#   pathway_pathway_intersection <- sum(pathway_membership_sum == 2) # counting number of intersections (~AND operation)
+# 
+#   pathway_pathway_df[pr[1], pr[2]] <- pathway_pathway_intersection # update intersection values
+#   pathway_pathway_df[pr[2], pr[1]] <- pathway_pathway_intersection
+#   
+#   if(pathway_pathway_df[pr[2], pr[2]] == 0)
+#     pathway_pathway_df[pr[2], pr[2]] <- sum(pathway_gene_df[pr[2], ]) # update diagonal (reflexive) values
+#   
+#   if(i %% 100 == 0)
+#     print(paste(i, " out of ", nrow(pairs), " processed.", sep=""))
+# }
 ```
 
 ```{r}
@@ -94,7 +136,7 @@ print(sparsity)
 
 ```{r}
 # draw a heatmap of pathway-pathway intersections
-pathway_pathway_df.m <- pathway_pathway_df
+#pathway_pathway_df.m <- pathway_pathway_df
 for(i in 1:nrow(pathway_pathway_df.m)) # remove diagonals for visualization purposes (to remove high outlying values in diagonal)
   pathway_pathway_df.m[i, i] <- 0
 
@@ -112,6 +154,7 @@ pathway_pathway_df.m <- melt(pathway_pathway_df.m)
 ```
 
 ```{r}
+# distributions of pathway-pathway intersections; exploratory, not used in figure updates
 pathway_pathway_df.s <- pathway_pathway_df
 for(i in 1:nrow(pathway_pathway_df))
   pathway_pathway_df[i, i] <- 0
