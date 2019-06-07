@@ -43,7 +43,9 @@ for(pathway_genes in pathway_ALLGENE){
 }
 
 gene_symbols <- sort(gene_symbols)
+```
 
+```{r}
 # each row corresponds to a gene, column to pathway
 pathway_gene_df <- as.data.frame(matrix(rep(0, length(pathway_ALLGENE)*length(gene_symbols)), 
                                         nrow=length(pathway_ALLGENE)))
@@ -82,7 +84,7 @@ pg <- generate_histogram_from_list(gene_membership)
 pg + ggtitle('Distribution of Gene Membership') + xlab('Number of Pathways') + ylab('Frequency')
 
 pp <- generate_histogram_from_list(pathway_size) 
-pp + ggtitle('Distribution of Pathway Size') + xlab('Number of Genes') + ylab('Frequency')
+pp + ggtitle('Distribution of Pathway Size') + xlab('Number of Genes') + ylab('Frequency') # + xlim(0, 100) # enforce x-axis range
 ```
 
 ```{r}
