@@ -1,24 +1,15 @@
-display_diff_exp_stats <- function(lrt, p_val_threshold=0.05, 
-                                   FDR_threshold=0.05, logFC_threshold=1){
+display_diff_exp_stats <- function(lrt, FDR_threshold=0.05){
   # summary stats/counts
   summary(decideTests(lrt))
   
   gene_table <- topTags(lrt, n=dim(lrt$table)[1])
   gene_table <- gene_table[order(gene_table$table$FDR), ]
-  
-  gene_table <- gene_table[abs(gene_table$table$logFC) >= logFC_threshold,] 
-  print(paste("# of diff. exp. logFC genes:", dim(gene_table)[1]))
+  print(paste("# of considered genes:", dim(gene_table)[1]))
 
-  gene_table <- gene_table[gene_table$table$PValue <= p_val_threshold &
-                             abs(gene_table$table$logFC) >= logFC_threshold,]
-  
-  print(paste("# of diff. exp. logFC genes, filtered by PValue:", dim(gene_table)[1]))
-  
-  print(paste("# of diff. exp. logFC genes, filtered by FDR (q_value):", dim(gene_table)[1]))
-  gene_table <- gene_table[gene_table$table$FDR <= FDR_threshold &
-                             abs(gene_table$table$logFC) >= logFC_threshold,] 
+  gene_table <- gene_table[gene_table$table$FDR <= FDR_threshold, ] 
+  print(paste("# of diff. exp. genes, filtered by FDR (q_value):", dim(gene_table)[1]))
 
-  #print(gene_table) # differentially expressed genes with FDR < 0.05 and logFC > 1
+  #print(gene_table) # differentially expressed genes with FDR < 0.05
   return(gene_table)
 }
 
@@ -91,7 +82,7 @@ for(i in 1:length(cancer_types)){
     
     sampleType <- factor(c(rep(1, ncol(h_counts)), rep(2, ncol(t_counts)))) # 1 for healthy, 2 for tumor
     designMat <- model.matrix(~sampleType)
-    
+  
     dgList <- estimateGLMCommonDisp(dgList, design=designMat) # estimating dispersions
     print(paste("Common dispersions calculated. ", "[", Sys.time(), "]", sep=""))
     save.image(paste(cancer_types[i], "checkpoint2.RData", sep="_"))
