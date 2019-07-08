@@ -1,0 +1,78 @@
+---
+title: "convert_IDs.Rmd"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+custom_processing_steps <- function(ppi_net, network_name){
+  if(network_name == 'STRING'){
+    ppi_net[, 1] <- gsub('9606.', '', ppi_net[, 1])
+    ppi_net[, 2] <- gsub('9606.', '', ppi_net[, 2])
+  }
+  
+  return(ppi_net)
+}
+```
+
+```{r}
+network_index <- 2 # 1 for HumanNet, 2 for STRING, etc.
+
+network_names <- c('HumanNetv2_FN', 'STRING')
+network_files <- paste('../', c('HumanNetv2-FunctionalGeneNetwork_[FN].tsv', 'STRING_9606.protein.links.v11.0.txt'), sep='')
+network_header <- c(F, T)
+network_sep <- c('\t', ' ')
+network_nodename_types <- c('entrezgene_id', 'ensembl_peptide_id')
+
+# read network
+ppi_net <- read.table(network_files[network_index], sep=network_sep[network_index], header=network_header[network_index], )
+print(paste("Number of edges in PPI Network ", network_names[network_index], ": ", sep=""))
+print(dim(ppi_net))
+
+# network-specific processing steps 
+ppi_net <- custom_processing_steps(ppi_net, network_names[network_index])
+
+# fetch all node names
+node_names_all <- unique(union(ppi_net[, 1], ppi_net[, 2]))
+print("Number of nodes:")
+print(length(node_names_all))
+```
+
+```{r}
+# convert gene/protein names to gene symbols using bioMart
+# Helpful link: https://www.bioconductor.org/packages/devel/bioc/vignettes/biomaRt/inst/doc/biomaRt.html#selecting-a-biomart-database-and-dataset
+library(biomaRt)
+ensembl = useMart(biomart="ENSEMBL_MART_ENSEMBL")
+ensembl_hsgenes <- useDataset('hsapiens_gene_ensembl', mart=ensembl)
+
+# list available attributes in the Mart
+listAttributes(ensembl_hsgenes)
+
+# Fetch the genes with both IDs (IDs in ppi nets and and gene names) in R
+genes.with.id = getBM(attributes=c(network_nodename_types[network_index], "external_gene_name"), 
+                      filters=c(network_nodename_types[network_index]), values=c(node_names_all), 
+                      mart=ensembl_hsgenes)
+
+print("Number of genes with both IDs (including duplicates):")
+print(nrow(genes.with.id))
+```
+
+```{r}
+# replace IDs in cols 1 and 2 with gene symbols 
+library(plyr)
+
+ppi_net[, 1] <- mapvalues(ppi_net[, 1], from=genes.with.id[, 1], to=genes.with.id[, 2])
+ppi_net[, 2] <- mapvalues(ppi_net[, 2], from=genes.with.id[, 1], to=genes.with.id[, 2])
+
+print("Number of nodes after ID coversion:")
+print(length(unique(union(ppi_net[, 1], ppi_net[, 2]))))
+```
+
+```{r}
+# write network file with converted IDs
+ppi_net_converted_filename <- paste(network_names[network_index], "_converted.txt", sep="")
+write.table(ppi_net, file=ppi_net_converted_filename, col.names=F, row.names=F, quote=F)
+```
