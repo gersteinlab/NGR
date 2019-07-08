@@ -14,7 +14,7 @@ source('../base/plotting.R')
 
 ```{r}
 species="hsapiens"
-pathwaydb= "reactome" #"nci" #"kegg"  #"biocarta" 
+pathwaydb= "kegg" #"reactome" #"nci" #"biocarta" 
 #pathways <- GetData(species, pathwaydb)
 
 # #get genes in all pathways + save in file
