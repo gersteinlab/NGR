@@ -9,7 +9,7 @@ library(StarBioTrek)
 library(ggplot2)
 library(DescTools)
 library(reshape2)
-source('../base/plotting.R')
+source('../../base/plotting.R')
 ```
 
 ```{r}
