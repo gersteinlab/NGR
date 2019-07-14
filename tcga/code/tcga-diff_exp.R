@@ -107,8 +107,9 @@ for(i in 1:length(cancer_types)){
     abline(h=c(-1, 1), col=2)
     print(paste("Plot generated. ", "[", Sys.time(), "]", sep=""))
     save.image(paste(cancer_types[i], "checkpoint5.RData", sep="_"))
-    
-    display_diff_exp_stats(lrt)
+
+    gene_table <- display_diff_exp_stats(lrt)
+    write.table(gene_table[, c("genes", "logFC", "FDR", "PValue")], paste(cancer_types[i], "expression", "results.csv", sep="_"), row.names=F, col.names=T, quote=F)
   }, error = function(e) {
     print(paste("Error with ", cancer_types[i], sep=""))
     print(e)
