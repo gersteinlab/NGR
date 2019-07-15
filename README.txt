@@ -29,3 +29,4 @@ mv HumanNetv2_FN_converted.txt HumanNetv2_converted_all.txt
 awk '{if(FNR<=54300){print}else{exit}}' HumanNetv2_converted_all.txt > HumanNetv2_converted.txt
 
 To generate betweenness centrality results, run (full commands in NGS Board sheet) code/ppi_centrality_script.sh
+Betweenness centrality results are in code/results/
