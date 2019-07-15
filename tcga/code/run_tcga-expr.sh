@@ -6,10 +6,9 @@
 
 date
 
-~/Rscript ../code/tcga-diff_exp.R
+~/Rscript tcga-diff_exp.R
 echo "[Bash script] Rscript Done."
 
-mv *.RData ../code
 rm Rplots.pdf
 
 echo "[Bash script] Files moved and deleted as necessary."
