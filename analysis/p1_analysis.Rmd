@@ -1,0 +1,212 @@
+---
+title: "p1_analysis.Rmd"
+author: "Hussein Mohsen"
+date: "7/16/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source('../base/plotting.R')
+library(tools)
+library(plyr)
+library(ggplot2)
+```
+
+```{r pressure, echo=FALSE}
+# filenames
+tcga_dir <- 'tcga_results/'
+bc_dir <- 'ppi_results/'
+known_gene_lists_dir <- 'gene_lists/known_genes/'
+lit_gene_lists_dir <- 'gene_lists/literature/'
+
+expression_names <- c('brca', 'chol', 'lihc', 'luad', 'lusc', 'prad')
+expression_files <- paste(tcga_dir, expression_names, '_expression_results.csv', sep='')
+expression_gene_col <- 'genes'; expression_feature_col <- 'logFC'
+
+bc_names <- c('HumanNetv2', 'STRING')
+bc_files <- paste(bc_dir, bc_names, '_bc_values.csv', sep='')
+bc_gene_col <- 'gene'; bc_feature_col <- 'centrality'
+
+lit_gene_names <- c('PanCancer')
+lit_gene_files <- paste(lit_gene_lists_dir, c('cancermine_collated_Jul2_version.tsv'), sep='')
+lit_gene_col <- 'gene_normalized' ; lit_feature_col <- 'citation_count'
+
+known_gene_names <- c('COSMIC')
+known_gene_files <- paste(known_gene_lists_dir, c('COSMIC_v89_Census_all_Jul_16_19.tsv'), sep='')
+```
+
+```{r}
+# read files
+read_data <- function(filename){
+  separator = ','
+  if(file_ext(filename) == 'tsv')
+    separator = '\t'
+  
+  data <- read.table(filename, header=T, row.names=NULL, quote="", sep=separator, stringsAsFactors=F, check.names=T)
+  return(data)
+}
+
+# receives two data frames with genes and feature values among other columns
+# returns data frame with common genes and both feature values in prep for plotting
+# xnames has two values: column names of genes and feature value, respectively. Same for y_names.
+get_common_df <- function(x_df, y_df, x_names, y_names){
+  x_gene_col <- x_names[1]; x_feature_col <- x_names[2]
+  x_df <- x_df[, x_names]; x_df <- ddply(x_df, as.name(x_gene_col), numcolwise(sum)); 
+
+  y_df <- y_df[, y_names]; y_gene_col <- y_names[1]; y_feature_col <- y_names[2]
+  y_df <- y_df[, y_names]; y_df <- ddply(y_df, as.name(y_gene_col), numcolwise(sum)); 
+
+  common_genes <- sort(intersect(x_df[, x_gene_col], y_df[, y_gene_col]))
+  n_common_genes <- length(common_genes)
+  print(paste(x_feature_col, y_feature_col, ":", n_common_genes, " common genes.", sep=' '))
+
+  rownames(x_df) <- x_df[, x_gene_col]
+  rownames(y_df) <- y_df[, y_gene_col]
+    
+  common_df <- as.data.frame(cbind(common_genes, 
+                     x_df[common_genes, x_feature_col],
+                     y_df[common_genes, y_feature_col]),
+                     stringsAsFactors = F)
+
+  colnames(common_df) <- c("common_genes", x_feature_col, y_feature_col)
+  
+  common_df[, 2] <- as.double(common_df[, 2])
+  common_df[, 3] <- as.double(common_df[, 3])
+  
+  return(common_df)
+}
+
+# plots a dataframe with x=col1 and y=col2
+plot_df <- function(df, plot_title='', colors=c('black')){
+  x_feature <- colnames(common_df)[2]; y_feature <- colnames(common_df)[3]
+
+  p <- ggplot(data=df, aes_string(x=x_feature, y=y_feature)) +
+  geom_point(size=0.1, color=colors) + 
+  ggtitle(plot_title) +
+  xlab(toTitleCase(gsub('_', ' ', x_feature))) +
+  ylab(toTitleCase(gsub('_', ' ', y_feature))) +
+  theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), panel.background=element_blank(),
+        axis.line=element_line(), text=element_text(family='Trebuchet MS', face='bold'),
+        axis.title=element_text(size=8), axis.text=element_text(size=8),
+        plot.background = element_rect(fill='white'),
+        plot.title=element_text(size = 10, hjust=0.5))
+
+  return(p)
+}
+
+# gets plot title with customized suffix among two lists
+get_plot_title <- function(first_feature_name, second_feature_name, first_names_list, second_names_list, i, j){
+  plot_title_core <- toTitleCase(gsub('_', ' ', paste(second_feature_name, 'vs', first_feature_name, sep=' ')))
+
+  # suffix to indicate combinations of selections across the lists
+  plot_title_suffix <- ''
+  if(length(first_file_list) > 1)
+        plot_title_suffix <- first_names_list[i]
+  
+  if(length(second_file_list) > 1){
+    separator = '-'
+    if(plot_title_suffix == '')
+      separator=''
+    
+    plot_title_suffix <- paste(plot_title_suffix, second_names_list[j], sep=separator)
+  }
+  
+  if(plot_title_suffix != '') # append plot_title_suffix to plot_title if it's not empty
+    plot_title_suffix <- paste('\n[', plot_title_suffix, ']', sep='')
+  
+  plot_title <- paste(plot_title_core, plot_title_suffix, sep = ' ')
+  return(plot_title)
+}
+
+# returns a binary vector with vector[known_genes] = 1, 0 otherwise
+# to be used for coloring in plots
+generate_known_gene_color_vector <- function(known_gene_filename, known_genes_col, all_genes){
+  known_genes <- read_data(known_gene_filename)[, known_genes_col]
+  color_vector <- rep(1, length(all_genes))
+  color_vector[all_genes %in% known_genes] <- 2
+  return(color_vector)
+}
+```
+
+```{r}
+# DOT PLOTS (of distributions (2D)
+# To plot across two features, change values in SETTINGS below below. 
+# Current plotting are across betweenness centrality and literature citation count.
+
+# SETTINGS used in plotting below:
+# first_file_list <- expression_files; first_names_list <- expression_names; first_feature_name <- 'DE LogFC'
+# first_gene_col <- expression_gene_col; first_feature_col <- expression_feature_col
+
+first_file_list <- bc_files; first_names_list <- bc_names; first_feature_name <- 'Betweennes Centrality'
+first_gene_col <- bc_gene_col; first_feature_col <- bc_feature_col
+
+second_file_list <- lit_gene_files; second_names_list <-lit_gene_names; second_feature_name <- 'Citation Count'
+second_gene_col <- lit_gene_col; second_feature_col <- lit_feature_col
+
+known_gene_filename <- known_gene_files[1]; known_genes_col <- 'Gene.Symbol' # use COSMIC census list as list of known genes
+
+ps <- vector(mode="list", length=length(first_file_list)*length(second_file_list)) 
+plot_index <- 1
+plot_title_suffix <- ''
+
+# Loop over both lists and generate the plots
+for(i in 1:length(first_file_list)) {
+  ff = first_file_list[i]
+  f_data <- read_data(ff)
+  
+  for(j in 1:length(second_file_list)){
+    sf = second_file_list[j]
+    s_data <- read_data(sf)
+
+    plot_title <- get_plot_title(first_feature_name, second_feature_name, first_names_list, second_names_list, i, j)
+    print(plot_title)
+    
+    common_df <- get_common_df(x_df=f_data, 
+                               y_df=s_data, 
+                               x_names=c(first_gene_col, first_feature_col), 
+                               y_names=c(second_gene_col, second_feature_col))
+    
+    # generate color vector for known genes, if possible
+    colors <- 'black'
+    if(known_gene_filename != '')
+      colors <- generate_known_gene_color_vector(known_gene_filename, known_genes_col, common_df$common_genes)
+      index_order <- order(colors)
+      common_df <- common_df[index_order, ]
+      colors <- colors[index_order]
+
+    ps[[plot_index]] <- plot_df(common_df, plot_title=plot_title, colors=colors)
+    plot_index <- plot_index+1
+  }
+}
+
+ps_grid <- ggarrange(plotlist=ps, nrow=sqrt(length(ps)), ncol=ceiling(sqrt(length(ps))))
+
+device <- 'png'
+filebasename <- toTitleCase(paste(second_feature_name, 'vs', first_feature_name, sep=' '))
+ggsave(ps_grid, file=paste(filebasename, device, sep='.'), device=device, dpi=300)
+```
+
+```{r}
+# BAR PLOTS of distributions (1D)
+file_list <- lit_gene_files; names_list <- lit_gene_names; feature_name <- 'Citation Count'; feature_gene_col <- lit_gene_col; feature_col <- lit_feature_col
+
+ps <- vector(mode="list", length=length(file_list)) 
+plot_index <- 1
+plot_title_suffix <- ''
+
+for(i in 1:length(file_list)) {
+  f = file_list[i]
+  i_data <- read_data(f)
+  i_data <- ddply(i_data, as.name(feature_gene_col), numcolwise(sum)); 
+
+  ps[[plot_index]] <- generate_histogram_from_list(i_data[, feature_col], x_label=feature_name, title=names_list[i], bins=60)
+  plot_index <- plot_index+1
+}
+
+ps_grid <- ggarrange(plotlist=ps, nrow=sqrt(length(ps)), ncol=ceiling(sqrt(length(ps))))
+
+device <- 'png'
+filebasename <- feature_name
+ggsave(ps_grid, file=paste(filebasename, device, sep='.'), device=device, dpi=300)
+```
