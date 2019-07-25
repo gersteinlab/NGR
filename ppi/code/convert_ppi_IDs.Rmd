@@ -21,7 +21,7 @@ custom_processing_steps <- function(ppi_net, network_name){
 ```{r}
 network_index <- 2 # 1 for HumanNet, 2 for STRING, etc.
 
-network_names <- c('HumanNetv2_FN', 'STRING')
+network_names <- c('HumanNetv2', 'STRING')
 network_files <- paste('../', c('HumanNetv2-FunctionalGeneNetwork_[FN].tsv', 'STRING_9606.protein.links.v11.0.txt'), sep='')
 network_header <- c(F, T)
 network_sep <- c('\t', ' ')

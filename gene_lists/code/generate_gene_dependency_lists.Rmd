@@ -1,0 +1,73 @@
+---
+title: "generate_gene_dependency_lists.Rmd"
+author: "Hussein Mohsen"
+date: "7/23/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r pressure, echo=FALSE}
+files_dir <- '../dependency/'
+file_extension <- 'csv'
+tissues <- c('LUNG', 'BREAST', 'LIVER', 'PROSTATE')
+```
+
+```{r}
+# CRISPR Knockout file (Achilles_gene_effect.csv)
+file_prefix <- 'Achilles_gene_effect'
+scores_filename <- paste(files_dir, file_prefix, '.', file_extension, sep='')
+
+cell_line_filename <- paste(files_dir, 'CCLE_annotations_curatedv3.csv', sep='')
+cell_line_data <- read.table(cell_line_filename, header=T, row.names=NULL, sep=',')
+cell_line_data <- cell_line_data[!is.na(cell_line_data$depMapID), ]
+
+dep_data <- read.table(scores_filename, header=T, row.names=NULL, sep=',')
+cell_lines <- dep_data[, 'X']
+dep_data <- dep_data[, 2:ncol(dep_data)]
+
+dot_indices <- regexpr('\\.\\.', colnames(dep_data))
+colnames(dep_data) <- substr(colnames(dep_data), 0, dot_indices-1) # remove dots and their inline text to have gene names
+
+for(i in 1:length(tissues)){
+  tissue_indices <- grep(tissues[i], cell_line_data[, 'Tissue'])
+  tissue_cell_lines <- as.character(cell_line_data[tissue_indices, 'depMapID'])
+  
+  tissue_data <- dep_data[cell_lines %in% tissue_cell_lines, ]
+  tissue_data <- colMeans(tissue_data, na.rm=T) # average over a tissue's cell lines
+  tissue_data <- data.frame(gene=names(tissue_data), dep_score=tissue_data)
+  tissue_data <- tissue_data[!is.na(tissue_data[, 'dep_score']), ]
+  
+  tissue_scores_filename <- paste(files_dir, file_prefix, '_', tolower(tissues[i]), '.', file_extension, sep='')
+
+  write.table(tissue_data, tissue_scores_filename, row.names=F, col.names=T, quote=F, sep=',')
+}
+```
+
+```{r}
+# RNAi file (D2_combined_gene_dep_scores.csv)
+file_prefix <- 'D2_combined_gene_dep_scores'
+scores_filename <- paste(files_dir, file_prefix, '.', file_extension, sep='')
+
+dep_data <- read.table(scores_filename, header=T, row.names=NULL, sep=',')
+genes <- dep_data[, 'X']
+
+bracket_indices <- regexpr('\\(', genes)
+genes <- substr(genes, 0, bracket_indices-2) # remove brackets and their inline text to have gene names
+
+dep_data <- dep_data[, 2:ncol(dep_data)]
+
+for(i in 1:length(tissues)){
+  tissue_indices <- grep(tissues[i], colnames(dep_data))
+  tissue_data <- dep_data[, tissue_indices]
+  tissue_data <- rowMeans(tissue_data, na.rm=T) # average over a tissue's cell lines
+  tissue_data <- data.frame(gene=genes, dep_score=tissue_data)
+  tissue_data <- tissue_data[!is.na(tissue_data[, 'dep_score']), ]
+    
+  tissue_scores_filename <- paste(files_dir, file_prefix, '_', tolower(tissues[i]), '.', file_extension, sep='')
+
+  write.table(tissue_data, tissue_scores_filename, row.names=F, col.names=T, quote=F, sep=',')
+}
+```
