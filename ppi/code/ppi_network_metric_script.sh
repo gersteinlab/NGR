@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --partition=pi_gerstein
-#SBATCH --job-name=ppi_centrality
+#SBATCH --job-name=ppi_network_metric
 #SBATCH --cpus-per-task=4
 #SBATCH --time=13-23:59:00
 #SBATCH --mem=50GB
@@ -11,7 +11,7 @@ date
 
 echo "$@"
 date
-python ppi_centrality.py "$@"
+python ppi_network_metric.py "$@"
 date
 
 end_time=$(date +%s)

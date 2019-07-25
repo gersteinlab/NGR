@@ -22,11 +22,9 @@ To generate the PPI file with IDs converted to gene symbols, run code/convert_pp
 
 To retain high confidence interactions (i.e. confidence_score>700) in STRING, run the following commands:
 mv STRING_converted.txt STRING_converted_all.txt
-awk '{if($3>700){print}}' STRING_converted_all.txt > STRING_converted.txt
+awk '{if($3>700 && $1 >= $2){print}}' STRING_converted_all.txt > STRING_converted.txt
 
-To retain high confidence interactions (i.e. top 20%) in HumanNetv2, run the following commands:
-mv HumanNetv2_FN_converted.txt HumanNetv2_converted_all.txt
-awk '{if(FNR<=54300){print}else{exit}}' HumanNetv2_converted_all.txt > HumanNetv2_converted.txt
+HumanNetv2 file is generated and kept as is, no need for other commands.
 
 To generate betweenness centrality results, run (full commands in NGS Board sheet) code/ppi_centrality_script.sh
 Betweenness centrality results are in code/results/
