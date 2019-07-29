@@ -80,7 +80,7 @@ def write_dict_to_CSV(input_dict, filename, header=""):
         print("Error writing file {}.".format(filename))
 
 def calculate_metric_values(network_name, network_filename="", metric="centrality", k_nodes=None, weight='weight', seed=18):
-    pickle_filename = get_filename(network_name, k_nodes, type="pickle", metric=metric, extension="pkl")
+    pickle_filename = get_filename(network_name, k_nodes, type="pickle", metric=metric, extension="pkl", weight=weight)
     print("Pickle file: {0}".format(pickle_filename))
 
     if os.path.exists(pickle_filename):
@@ -117,6 +117,6 @@ if __name__ == "__main__":
     metric_values = calculate_metric_values(network_name=network_name, network_filename=network_filename, 
                                             weight=weight, metric=metric, k_nodes=k_nodes)
 
-    results_csv_filename = get_filename(network_name, k_nodes, type='text', metric=metric, extension='csv')
+    results_csv_filename = get_filename(network_name, k_nodes, type='text', metric=metric, extension='csv', weight=weight)
     write_dict_to_CSV(metric_values, results_csv_filename, header=("gene,"+metric))
     
