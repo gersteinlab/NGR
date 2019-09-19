@@ -30,7 +30,7 @@ dep_data <- dep_data[, 2:ncol(dep_data)]
 
 dot_indices <- regexpr('\\.\\.', colnames(dep_data))
 colnames(dep_data) <- substr(colnames(dep_data), 0, dot_indices-1) # remove dots and their inline text to have gene names
-
+  
 for(i in 1:length(tissues)){
   tissue_indices <- grep(tissues[i], cell_line_data[, 'Tissue'])
   tissue_cell_lines <- as.character(cell_line_data[tissue_indices, 'depMapID'])
