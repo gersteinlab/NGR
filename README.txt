@@ -13,9 +13,12 @@ To extract and analyze pathways: run code/extract_pathways.Rmd
 
 tcga/:
 To fetch clinical data: run code/tcga-clinical.Rmd. Current files in clinical_data/ are manually created symbolic links.
+
 To generate differential expression information: run code/run_tcga-expr.sh.
 Note on differential expression analysis: currently, emphasis is put on FDR<=0.05 only; no logFC threshold. If logFC threshold is to be enforced, update and rerun code/tcga-diff_exp.R to use glmTreat() for model training: see section 2.12 in edgeR manual for more details.
 Differential expression analysis results are in code/results/
+
+For data download, annotation (using ANNOVAR), and feature extraction in somatic and germline TCGA variants, see cortex_data/variant_data/README.txt
 
 ppi/:
 To generate the PPI file with IDs converted to gene symbols, run code/convert_ppi_IDs.Rmd
