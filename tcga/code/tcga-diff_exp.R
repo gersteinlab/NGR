@@ -17,7 +17,7 @@ library(edgeR)
 
 # Tutorial: https://bioinformatics-core-shared-training.github.io/cruk-bioinf-sschool/Day3/rnaSeq_DE.pdf
 expression_data_dir <- '../expression_data/'
-cancer_types <- c('brca', 'luad', 'lusc', 'prad', 'lihc', 'chol', 'meso', 'dlbc')
+cancer_types <- c('brca', 'luad', 'lusc', 'prad', 'lihc', 'chol', 'meso', 'dlbc','blca', 'cesc', 'coad', 'esca', 'hnsc', 'kich', 'kirc', 'kirp', 'read', 'stad', 'thca', 'ucec')
 #cancer_types <- c('brca')
 tumor_exp_files <- c(paste(expression_data_dir, cancer_types, '-rsem-count-tcga-t.txt', sep=''))
 healthy_exp_files <- c(paste(expression_data_dir, cancer_types, '-rsem-count-tcga.txt', sep=''))
@@ -109,7 +109,7 @@ for(i in 1:length(cancer_types)){
     save.image(paste(cancer_types[i], "checkpoint5.RData", sep="_"))
 
     gene_table <- display_diff_exp_stats(lrt)
-    write.table(gene_table[, c("genes", "logFC", "FDR", "PValue")], paste(cancer_types[i], "expression", "results.csv", sep="_"), row.names=F, col.names=T, quote=F, sep=',')
+    write.table(gene_table[, c("gene", "logFC", "FDR", "PValue")], paste(cancer_types[i], "expression", "results.csv", sep="_"), row.names=F, col.names=T, quote=F, sep=',')
   }, error = function(e) {
     print(paste("Error with ", cancer_types[i], sep=""))
     print(e)
