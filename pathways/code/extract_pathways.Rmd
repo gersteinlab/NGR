@@ -14,12 +14,12 @@ source('../../base/plotting.R')
 
 ```{r}
 species="hsapiens"
-pathwaydb= "kegg" #"reactome" #"nci" #"biocarta" 
-#pathways <- GetData(species, pathwaydb)
+pathwaydb <- "reactome" #"biocarta" #"nci" #"kegg" 
+pathways <- GetData(species, pathwaydb)
 
-# #get genes in all pathways + save in file
-# pathway_ALLGENE <- ConvertedIDgenes(path_ALL=pathways)
-# pathway_ALLGENE <- pathway_ALLGENE[sort(names(pathway_ALLGENE))]
+# get genes in all pathways + save in file
+pathway_ALLGENE <- ConvertedIDgenes(path_ALL=pathways)
+pathway_ALLGENE <- pathway_ALLGENE[sort(names(pathway_ALLGENE))]
 ```
 
 ```{r}
@@ -60,6 +60,13 @@ for(p in 1:length(pathway_ALLGENE)){
 
 # write matrix to file
 write.table(pathway_gene_df, file=paste(pathwaydb, "_pathway_gene_matrix_", Sys.Date(), ".txt", sep=""), row.names=T, col.names=T, quote=F)
+
+# write features (gene,n_pathways) to file
+gene_pathway_membership <- as.data.frame(colSums(pathway_gene_df))
+gene_pathway_membership[, 2] <- gene_pathway_membership[, 1]
+gene_pathway_membership[, 1] <- rownames(gene_pathway_membership)
+colnames(gene_pathway_membership) <- c("gene", "n_pathways")
+write.table(gene_pathway_membership, file=paste(pathwaydb, "_gene_membership", ".txt", sep=""), row.names=F, col.names=T, quote=F, sep=",")
 ```
 
 ```{r}
@@ -104,7 +111,6 @@ pathway_pathway_df <- as.data.frame(PairApply(t(pathway_gene_df), FUN=calc_inter
 # write matrix to file
 write.table(pathway_pathway_df, file=paste(pathwaydb, "_pathway_pathway_matrix_", Sys.Date(), ".txt", sep=""), row.names=T, col.names=T, quote=F)
 ```
-
 
 ```{r}
 # Pathway-pathway intersection using permutations + for loop for pairwise comparisons; considerably less efficient than the one above 
