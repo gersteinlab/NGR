@@ -65,7 +65,7 @@ write.table(pathway_gene_df, file=paste(pathwaydb, "_pathway_gene_matrix_", Sys.
 gene_pathway_membership <- as.data.frame(colSums(pathway_gene_df))
 gene_pathway_membership[, 2] <- gene_pathway_membership[, 1]
 gene_pathway_membership[, 1] <- rownames(gene_pathway_membership)
-colnames(gene_pathway_membership) <- c("gene", "n_pathways")
+colnames(gene_pathway_membership) <- c("gene", paste("n_pathways", pathwaydb, sep="_"))
 write.table(gene_pathway_membership, file=paste(pathwaydb, "_gene_membership", ".txt", sep=""), row.names=F, col.names=T, quote=F, sep=",")
 ```
 
