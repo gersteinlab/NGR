@@ -16,7 +16,7 @@ library(scales)
 
 feature_files_dir <- "feature_file_lists/"
 feature_files_basename <- "somatic_MC3_feature_files"
-filename <- paste(feature_files_dir, cancer_type, feature_files_basename, ".txt", sep="")
+filename <- paste(feature_files_dir, feature_files_basename, ".txt", sep="")
 feature_files <- as.character(read.table(feature_files_filename)[, 1]) # read the list of files
 
 # All feature files have: gene names in 1st column, feature value of interest in 2nd
