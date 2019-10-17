@@ -30,4 +30,13 @@ awk '{if($3>700 && $1 >= $2){print}}' STRING_converted_all.txt > STRING_converte
 HumanNetv2 file is generated and kept as is, no need for other commands.
 
 To generate betweenness centrality results, run (full commands in NGS Board sheet) code/ppi_centrality_script.sh
-Betweenness centrality results are in code/results/
+Betweenness centrality results are in code/results
+
+Combined score generation::
+To merge features and generate combined scores to be used as inputs to the method, locally run in base/:
+module load R
+Rscript merge_features.R -v somatic_MC3
+Rscript merge_features.R -v germline
+mv *.RData results/
+
+

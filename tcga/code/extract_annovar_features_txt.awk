@@ -14,17 +14,33 @@
 				gene_count[gene] = gene_count[gene] + 1
 				
 			# samplepergene
-			split($NF, feature_vals, "=")
-			for(j=12; j<=NF; j++){ # TCGA IDs start at index 12
-				if(feature_vals[j] ~ "TCGA-"){
-					TCGA_ID = substr(feature_vals[j], 1, 16) # unique identifier of a sample in a TCGA ID
-					
-					if(sample_count[gene][TCGA_ID] == "")
-						sample_count[gene][TCGA_ID] = 1
-					else
-						sample_count[gene][TCGA_ID] = sample_count[gene][TCGA_ID] + 1
-				} else{
-					break
+			if(variant_type == "germline"){ # last columns in germline annotations are formatted differently from somatic ones
+				for(i=NF; i>0; i--){
+					if($i ~ "TCGA"){
+						split($i, feature_vals, ":")
+						TCGA_ID = feature_vals[length(feature_vals)]
+
+						if(sample_count[gene][TCGA_ID] == "")
+							sample_count[gene][TCGA_ID] = 1
+						else
+							sample_count[gene][TCGA_ID] = sample_count[gene][TCGA_ID] + 1
+					} else{
+						break
+					}
+				}
+			} else{
+				split($NF, feature_vals, "=")
+				for(j=12; j<=NF; j++){ # TCGA IDs start at index 12
+					if(feature_vals[j] ~ "TCGA-"){
+						TCGA_ID = substr(feature_vals[j], 1, 16) # unique identifier of a sample in a TCGA ID
+						
+						if(sample_count[gene][TCGA_ID] == "")
+							sample_count[gene][TCGA_ID] = 1
+						else
+							sample_count[gene][TCGA_ID] = sample_count[gene][TCGA_ID] + 1
+					} else{
+						break
+					}
 				}
 			}
 		}
