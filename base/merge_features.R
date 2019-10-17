@@ -13,9 +13,19 @@ source('plotting.R')
 
 library(dplyr)
 library(scales)
+library(argparser)
+
+parser <- arg_parser('argument parser')
+parser <- add_argument(parser, "-v", default="somatic_MC3", help="Variation type: somatic_MC3 or germline")
+parser <- add_argument(parser, "-p", default=FALSE, help="Plotting flag")
+args = parse_args(parser)
+
+variant_type <- "somatic_MC3"
+if(args$v != "")
+  variant_type <- args$v
 
 feature_files_dir <- "feature_file_lists/"
-feature_files_basename <- "somatic_MC3_feature_files"
+feature_files_basename <- paste(variant_type, "feature", "files", sep="_")
 feature_files_filename <- paste(feature_files_dir, feature_files_basename, ".txt", sep="")
 feature_files <- as.character(read.table(feature_files_filename)[, 1]) # read the list of files
 
@@ -45,4 +55,5 @@ tail(feature_data_combined[, c("gene", "combined_score")], 10)
 
 save(feature_data_combined, file=paste("combined_scores_", feature_files_basename, ".RData", sep=""))
 
-generate_histogram_from_list(feature_data_combined$combined_score, x_label='NGR Combined Score', title='', bins=10)
+if(args$p)
+  generate_histogram_from_list(feature_data_combined$combined_score, x_label='NGR Combined Score', title='', bins=10)
