@@ -1,5 +1,8 @@
 #!/bin/gawk -f
 
+# variant type is given as an argument (default is empty string dealt with as somatic_MC3)
+# cancer_tpye is given as an argument (default is empty string dealt with as pancancer, i.e. encompasses all variants in a file)
+
 # returns the value after "=" in an annovar feature"s annotation
 # example: feature_annotation = SIFT_score=0.1 -> 0.1
 function extract_feature_value(feature_annotation){
@@ -43,59 +46,108 @@ function print_dict_results(feature_dict, feature_name){
 	return feature_str
 }
 
-{
-	if(NR > 1 && index($1, "#") != 1){
-		# split features in annovar annotations
-		split($8, features, ";");
-		
-		annovar_start_index = 2 # in somatic files, annovar_start_index is fixed = 2
-		if(variant_type == "germline"){ # in germline, it varies
-			for(i=1; i<=length(features); i++){
-				if(features[i] ~ "ANNOVAR_DATE"){
-					annovar_start_index=i
-					break
-				}
+# checks if the TCGA barcodes correspond to samples of the given cancer type
+function check_data_point(data_point, variant_type, cancer_type_barcodes){
+	if(cancer_type == "") # pancancer case; include all variants
+		return 1
+
+	if(variant_type == "germline"){ # last columns in germline annotations are formatted differently from somatic ones
+		for(i=NF; i>0; i--){
+			if($i ~ "TCGA"){
+				split($i, feature_vals, ":")
+				TCGA_barcode_prefix = substr(feature_vals[length(feature_vals)], 1, 12)
+
+				if(cancer_type_barcodes ~ TCGA_barcode_prefix)
+					return 1
+
+			} else{
+				break
 			}
 		}
-		
-		# some genes values are composite; split them
-		genes_str = extract_feature_value(features[annovar_start_index+2])
-		split(genes_str, gene_names, "\\\\x3b")
-		
-		for(i=1; i<= length(gene_names); i++){
-			# get gene name
-			gene_name =  gene_names[i]		
+	} else{
+		split(data_point, feature_vals, "=")
+		for(j=12; j<=length(feature_vals); j++){ # TCGA barcodes start at index 12
+			if(feature_vals[j] ~ "TCGA-"){
+				TCGA_barcode_prefix = substr(feature_vals[j], 1, 12) # unique identifier prefix of a sample in a TCGA barcode
+
+				if(cancer_type_barcodes ~ TCGA_barcode_prefix)
+					return 1
+			} else{
+				break
+			}
+		}
+	}
+	
+	return 0
+}
+
+BEGIN{
+	cancer_type_barcodes = ""
+}
+
+{
+	if(pass == "barcodes"){ # barcodes file
+		# clinical data file (PanCan_ClinicalData_V4_wAIM.txt) with barcodes in the second column
+		sample_barcode = $1
+		sample_cancer_type = $2
+		if(sample_cancer_type == cancer_type)
+			cancer_type_barcodes = cancer_type_barcodes sample_barcode "-"
+	} else if(NR > 1 && index($1, "#") != 1){ # annotated file
+		include_data_point = check_data_point($10, variant_type, cancer_type_barcodes) # check if data point corresponds to cancer type under study
+
+		if(include_data_point == 1){
+			# split features in annovar annotations
+			split($8, features, ";");
 			
-			# I. Categorical features
+			annovar_start_index = 2 # in somatic files, annovar_start_index is fixed = 2
+			if(variant_type == "germline"){ # in germline, it varies
+				for(i=1; i<=length(features); i++){
+					if(features[i] ~ "ANNOVAR_DATE"){
+						annovar_start_index=i
+						break
+					}
+				}
+			}
 			
-			# Exonic function value: synonymous_SNV, nonsynonymous_SNV, stopgain, frameshift_substitution 
-			exonic_func_value = extract_feature_value(features[annovar_start_index+4])
-			if(exonic_func_value == "nonsynonymous_SNV")
-				nonsynonymous[gene_name] = nonsynonymous[gene_name] + 1
-			else if(exonic_func_value == "synonymous_SNV")
-				synonymous[gene_name] = synonymous[gene_name] + 1
-			else if(exonic_func_value == "stopgain")
-				stopgain[gene_name] = stopgain[gene_name] + 1
-			else if(exonic_func_value == "frameshift_substitution")
-				frameshift_substitution[gene_name] = frameshift_substitution[gene_name] + 1
+			# some genes values are composite; split them
+			genes_str = extract_feature_value(features[annovar_start_index+2])
+			split(genes_str, gene_names, "\\\\x3b")
 			
-			# II. Numeric features
-			
-			update_numeric_feature_dict(SIFT_scores, gene_name, features, annovar_start_index+8)
-			update_numeric_feature_dict(FATHMM_scores, gene_name, features, annovar_start_index+20)
-			update_numeric_feature_dict(PROVEAN_scores, gene_name, features, annovar_start_index+23)
-			update_numeric_feature_dict(METASVM_scores, gene_name, features, annovar_start_index+26)
-			update_numeric_feature_dict(METALR_scores, gene_name, features, annovar_start_index+29)
-			update_numeric_feature_dict(MCAP_scores, gene_name, features, annovar_start_index+31+(variant_type == "germline"))	# MCAP scores are 31st annovar features in somatic files, 32nd in germline ones.
-			update_numeric_feature_dict(fitCons_scores, gene_name, features, annovar_start_index+45)
-			update_numeric_feature_dict(GERP_scores, gene_name, features, annovar_start_index+48)
-			update_numeric_feature_dict(PhyloP_scores, gene_name, features, annovar_start_index+52)
-			update_numeric_feature_dict(PhyloPhen2_scores, gene_name, features, annovar_start_index+151)
-			update_numeric_feature_dict(Eigen_scores, gene_name, features, annovar_start_index+207)
+			for(i=1; i<= length(gene_names); i++){
+				# get gene name
+				gene_name =  gene_names[i]		
+				
+				# I. Categorical features
+				
+				# Exonic function value: synonymous_SNV, nonsynonymous_SNV, stopgain, frameshift_substitution 
+				exonic_func_value = extract_feature_value(features[annovar_start_index+4])
+				if(exonic_func_value == "nonsynonymous_SNV")
+					nonsynonymous[gene_name] = nonsynonymous[gene_name] + 1
+				else if(exonic_func_value == "synonymous_SNV")
+					synonymous[gene_name] = synonymous[gene_name] + 1
+				else if(exonic_func_value == "stopgain")
+					stopgain[gene_name] = stopgain[gene_name] + 1
+				else if(exonic_func_value == "frameshift_substitution")
+					frameshift_substitution[gene_name] = frameshift_substitution[gene_name] + 1
+				
+				# II. Numeric features
+				
+				update_numeric_feature_dict(SIFT_scores, gene_name, features, annovar_start_index+8)
+				update_numeric_feature_dict(FATHMM_scores, gene_name, features, annovar_start_index+20)
+				update_numeric_feature_dict(PROVEAN_scores, gene_name, features, annovar_start_index+23)
+				update_numeric_feature_dict(METASVM_scores, gene_name, features, annovar_start_index+26)
+				update_numeric_feature_dict(METALR_scores, gene_name, features, annovar_start_index+29)
+				update_numeric_feature_dict(MCAP_scores, gene_name, features, annovar_start_index+31+(variant_type == "germline"))	# MCAP scores are 31st annovar features in somatic files, 32nd in germline ones.
+				update_numeric_feature_dict(fitCons_scores, gene_name, features, annovar_start_index+45)
+				update_numeric_feature_dict(GERP_scores, gene_name, features, annovar_start_index+48)
+				update_numeric_feature_dict(PhyloP_scores, gene_name, features, annovar_start_index+52)
+				update_numeric_feature_dict(PhyloPhen2_scores, gene_name, features, annovar_start_index+151)
+				update_numeric_feature_dict(Eigen_scores, gene_name, features, annovar_start_index+207)
+			}
 		}
 	
 		if(FNR % 50000 == 0)
-			print "Line " NR " processed."
+			print "Line " FNR " processed."
 	}
 }
 
