@@ -56,7 +56,7 @@ tail(feature_data_combined[, c('gene', 'combined_score')], 10)
 
 output_dir <- 'results/'
 save(feature_data_combined, file=paste(output_dir, 'combined_scores_', feature_files_basename, '.RData', sep=''))
-write.table(feature_data_combined[, c('gene', 'combined_score')], file=paste(output_dir, 'combined_scores_', feature_files_basename, '.csv', sep=''), col.names=T, row.names=F, sep=',')
+write.table(feature_data_combined[, c('gene', 'combined_score')], file=paste(output_dir, 'combined_scores_', feature_files_basename, '.csv', sep=''), col.names=T, row.names=F, sep=',', quote=F)
 
 # Visualization
 if(args$p)
