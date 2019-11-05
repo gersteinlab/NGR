@@ -6,10 +6,10 @@
 
 date
 
-declare -a cancer_types=('' 'BRCA' 'CHOL' 'DLBC' 'LIHC' 'LUAD' 'LUSC' 'MESO' 'PRAD' 'ACC' 'BLCA' 'CESC' 'COAD' 'ESCA' 'GBM' 'HNSC' 'KICH' 'KIRC' 'KIRP' 'LAML' 'LGG' 'OV' 'PAAD' 'PCPG' 'READ' 'SARC' 'SKCM' 'STAD' 'TGCT' 'THCA' 'THYM' 'UCEC' 'UCS' 'UVM');
-declare -a variant_types=('somatic_MC3' 'germline');
-declare -a txt_files=('somatic_MC3/mc3.v0.2.8.PUBLIC.vcf.hg19_multianno.txt' 'germline/PCA.r1.TCGAbarcode.merge.tnSwapCorrected.10389_rmLowQual.vcf.hg19_multianno.txt');
-declare -a vcf_files=('somatic_MC3/mc3.v0.2.8.PUBLIC.vcf.hg19_multianno.vcf' 'germline/PCA.r1.TCGAbarcode.merge.tnSwapCorrected.10389_rmLowQual.vcf.hg19_multianno.vcf');
+declare -a cancer_types=('GBM' 'HNSC' 'KICH' 'KIRC' 'KIRP' 'LAML' 'LGG' 'OV' 'PAAD' 'PCPG' 'READ' 'SARC' 'SKCM' 'STAD' 'TGCT' 'THCA' 'THYM' 'UCEC' 'UCS' 'UVM');
+declare -a variant_types=('germline');
+declare -a txt_files=('germline/PCA.r1.TCGAbarcode.merge.tnSwapCorrected.10389_rmLowQual.vcf.hg19_multianno.txt');
+declare -a vcf_files=('germline/PCA.r1.TCGAbarcode.merge.tnSwapCorrected.10389_rmLowQual.vcf.hg19_multianno.vcf');
 clinical_file=~/hm444/NGR/tcga/clinical_data/PanCan_ClinicalData_V4_wAIM.txt
 
 for (( j=0; j<${#variant_types[@]}; j++ ));
