@@ -15,6 +15,8 @@ echo "Working on HumanNet_v2 network...."
 awk -v file_prefix="HumanNetv2_converted" -f convert_ppi_network_to_matrix.awk results/HumanNetv2_converted.txt
 date
 
+mv *matrix*.txt results/
+
 end_time=$(date +%s)
 
 hours=$(( ($end_time-$start_time) / ( 3600 )))
