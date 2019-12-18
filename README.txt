@@ -18,7 +18,7 @@ To generate differential expression information: run code/run_tcga-expr.sh local
 Note on differential expression analysis: currently, emphasis is put on FDR<=0.05 only; no logFC threshold. If logFC threshold is to be enforced, update and rerun code/tcga-diff_exp.R to use glmTreat() for model training: see section 2.12 in edgeR manual for more details.
 Differential expression analysis results are in code/results/
 
-For data download, annotation (using ANNOVAR), and feature extraction in somatic and germline TCGA variants, see cortex_data/variant_data/README.txt
+For data download, annotation (using ANNOVAR), and feature extraction in somatic and germline TCGA variants, see tcga/cortex_data/variant_data/README.txt
 
 PPI ID conversion:
 To generate the PPI file with IDs converted to gene symbols, run convert_ppi_IDs.Rmd in ppi/code/

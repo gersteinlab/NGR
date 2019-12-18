@@ -1,32 +1,34 @@
 import helper_functions as hp
+
 import numpy as np
+import datetime
 
-def main():
-    initial_score_file = '../base/results/combined_scores_somatic_MC3_feature_files.csv'
-    initial_scores = hp.read_scores(initial_score_file, sorted=True)
-    initial_scores = initial_scores[np.argsort(initial_scores['gene'])]
-    print('Initial scores read successfully.')
+# Y is the vector of initial scores
+# W is the weight matrix, i.e. PPI network
+# W_index is the ordered list of genes as they appear in cols and rows
+def run(Y, W, W_index):
+    Y = Y.reshape(Y.shape[0], 1)
+    S = np.ndarray.copy(Y)
+    alpha = 0.8
 
-    # numpy array of voids
-    ppi_matrix_file_prefix = '../ppi/code/results/test_matrix2'
-    ppi_matrix, ppi_matrix_index = hp.read_matrix(ppi_matrix_file_prefix, sorted=True, selected_genes=initial_scores['gene'])
-    print('PPI matrix read successfully.')
-    
-    # reorder initial scores to match order of (NxN) matrix cols and rows 
-    initial_scores_new_order = np.searchsorted(initial_scores['gene'], ppi_matrix_index) # select only common genes for initial_scores
-    initial_scores = initial_scores[initial_scores_new_order]
+    print('\nNGR diffusion starts...\n')    
+    n_iterations = 25; i = 0; S_total_heat = 0
+    while i < n_iterations:
+        Sm = np.repeat(S, S.shape[0], axis=1)
+        Sm = (W > 0) * Sm # Step 1: W-based ReLU on S 
+        Sm = np.apply_along_axis(hp.nonzero_softmax, axis=1, arr=Sm) # Step 2: row-wise softmax
+        S = ((1 - alpha) * Y) + np.matmul(Sm, S) # Step 3: S = (1-a)*(Y) + (a)*Sm.S
+        
+        print(S)
+        S_total_heat_prev = S_total_heat
+        S_total_heat = np.sum(S)
+        heat_diff = np.abs(S_total_heat - S_total_heat_prev)
+        print('Iteration {0} complete. Heat difference: {1}'.format(i, heat_diff))
 
-    # weight matrix normalization
-    matrix_normalization_method = ''
-    matrix_scaling = True
-    
-    ppi_matrix = hp.normalize_matrix(ppi_matrix, scaling=matrix_scaling, normalization=matrix_normalization_method)
-    print(ppi_matrix)
-    print('Weight matrix normalized successfully.')
-    
-    # callling NGR
-    scores = hp.ngr(Y=initial_scores['score'], W=ppi_matrix, W_index=ppi_matrix_index)
-    print(scores)
-    print(initial_scores)
+        i += 1
 
-main()
+    # start here: in-place, 0-based softmax,
+    print('\nNGR diffusion done.')
+    print(datetime.datetime.now())
+
+    return S.reshape(S.shape[0], )
