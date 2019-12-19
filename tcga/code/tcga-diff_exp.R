@@ -1,4 +1,4 @@
-display_diff_exp_stats <- function(lrt, FDR_threshold=0.05){
+display_diff_exp_stats <- function(lrt, FDR_threshold=0.05, logFC_threshold=1){
   # summary stats/counts
   summary(decideTests(lrt))
   
@@ -6,11 +6,11 @@ display_diff_exp_stats <- function(lrt, FDR_threshold=0.05){
   gene_table <- gene_table[order(gene_table$table$FDR), ]
   print(paste("# of considered genes:", dim(gene_table)[1]))
 
-  gene_table <- gene_table[gene_table$table$FDR <= FDR_threshold, ] 
+  gene_table <- gene_table[gene_table$table$FDR <= FDR_threshold & abs(gene_table$table$logFC) >= logFC_threshold, ] 
   print(paste("# of diff. exp. genes, filtered by FDR (q_value):", dim(gene_table)[1]))
 
   #print(gene_table) # differentially expressed genes with FDR < 0.05
-  return(gene_table)
+  return(gene_table$table)
 }
 
 library(edgeR)
@@ -108,7 +108,7 @@ for(i in 1:length(cancer_types)){
     print(paste("Plot generated. ", "[", Sys.time(), "]", sep=""))
     save.image(paste(cancer_types[i], "checkpoint5.RData", sep="_"))
 
-    gene_table <- display_diff_exp_stats(lrt)
+    gene_table <- display_diff_exp_stats(lrt, FDR_threshold=0.05, logFC_threshold=1)
     gene_table <- gene_table[, c("genes", "logFC", "FDR", "PValue")]
     colnames(gene_table) <- c("gene", paste(c("logFC", "FDR", "PValue"), cancer_types[i], sep='_'))
     write.table(gene_table, paste(cancer_types[i], "expression", "results.csv", sep="_"), row.names=F, col.names=T, quote=F, sep=',')
