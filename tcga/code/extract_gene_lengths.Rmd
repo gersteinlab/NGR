@@ -1,0 +1,63 @@
+Skip to content
+Search or jump to…
+
+Pull requests
+Issues
+Marketplace
+Explore
+ 
+@hussein-mohsen 
+Learn Git and GitHub without any code!
+Using the Hello World guide, you’ll start a branch, write comments, and open a pull request.
+
+
+13
+00gersteinlab/TH2 Private
+ Code Issues 0 Pull requests 0 Actions Projects 0 Wiki Security Insights Settings
+TH2/scripts/variant_scripts/generate_ENSEMBL_to_Gene_ID_list.Rmd
+@invalid-email-address invalid-email-address Pushed code.
+3843cd9 on Aug 16, 2018
+51 lines (36 sloc)  1.62 KB
+  
+---
+title: "ENSEMBL_to_Gene_ID"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# METHOD 1: biomaRt Package
+# Helpful link: https://www.bioconductor.org/packages/devel/bioc/vignettes/biomaRt/inst/doc/biomaRt.html#selecting-a-biomart-database-and-dataset
+library(biomaRt)
+grch37 = useMart(biomart="ENSEMBL_MART_ENSEMBL", host="grch37.ensembl.org", path="/biomart/martservice")
+# double check by listing the datasets in R
+listDatasets(grch37)
+# choose the Human dataset in R
+ensembl_grch37 <- useDataset("hsapiens_gene_ensembl", mart=grch37)
+# list available attributes in the Mart
+listAttributes(ensembl_grch37)
+# Fetch the genes (ENSEMBL gene IDs and gene names) in R
+genes.with.length.info <- getBM(attributes=c("ensembl_gene_id", "external_gene_name", "entrezgene_id", "chromosome_name", "start_position", "end_position"), values="*", mart=ensembl_grch37)
+genes.with.length.info$length <- abs(genes.with.length.info$end - genes.with.length.info$start)
+
+# save the file
+write.table(genes.with.length.info, "GRCh37_bioMart_bioConductor_package_all_121819.txt", sep="\t", row.names = FALSE, quote = FALSE)
+```
+
+```{r}
+# METHOD 2: Homo.sapiens Package
+library(Homo.sapiens)
+# get key types
+keytypes(Homo.sapiens)
+# choose "ENSEMBL" and save all keys
+ENSEMBL_keys_all <- keys(Homo.sapiens, keytype="ENSEMBL")
+length(ENSEMBL_keys_all)
+# get all gene names and ENSEMBL IDs
+gene_symbol_vs_ENSEMBL_ID_all <- AnnotationDbi::select(Homo.sapiens, keys=ENSEMBL_keys_all, keytype="ENSEMBL", columns=c("SYMBOL"))
+# save the file
+write.table(gene_symbol_vs_ENSEMBL_ID_all, "ENSEMBL_ID_vs_gene_ID_GRCh37_Homosapiens_bioConductor_package_all.txt", sep="\t", col.names = c("ENSEMBL_ID", "Gene_Symbol"), row.names=FALSE, quote = FALSE)
+```
+
