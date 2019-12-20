@@ -36,8 +36,12 @@ print(paste('Reading', feature_files[1], 'Done.', sep=' '))
 
 for(i in 2:length(feature_files)){
   feature_data <- read.table(feature_files[i], header=T, sep=',')
-  feature_data_combined <- full_join(feature_data_combined, feature_data[, 1:2]) # merge files
-  print(paste('Processing', feature_files[i], 'Done.', sep=' '))
+  if(nrow(feature_data) > 0){
+    feature_data_combined <- full_join(feature_data_combined, feature_data[, 1:2]) # merge files
+    print(paste('Processing', feature_files[i], 'Done.', sep=' '))
+  } else{
+    print(paste('Empty file: ', feature_files[i], '| Moving on.', sep=' '))
+  }
 }
 
 print(head(feature_data_combined))
