@@ -38,10 +38,10 @@ Betweenness centrality results are in ppi/code/results
 
 Combined score generation:
 To merge features and generate combined scores to be used as inputs to the method, locally run in base/:
+Note: Run on macbook but should execute successfuly on Farnam as needed if all R packages are installed.
 module load R
 Rscript merge_features.R -v somatic_MC3
 Rscript merge_features.R -v germline
-mv *.RData results/
 
 PPI network matrices:
 To generate PPI matrices to be used by the Python script of the method, run sbatch convert_ppi_network_to_matrix_script.sh in ppi/code/
