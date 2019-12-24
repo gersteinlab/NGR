@@ -7,7 +7,7 @@ import datetime
 # W is the weight matrix, i.e. PPI network
 # W_index is the ordered list of genes as they appear in cols and rows
 def run(Y, W, W_index):
-    Y = Y.reshape(Y.shape[0], 1)
+    Y = hp.totality_scale(Y.reshape(Y.shape[0], 1)) # scale values so they all sum to 1    
     S = np.ndarray.copy(Y)
     alpha = 0.8
 

@@ -21,9 +21,7 @@ parser <- add_argument(parser, '-v', default='somatic_MC3', help='Variation type
 parser <- add_argument(parser, '-p', default=FALSE, help='Plotting flag')
 args = parse_args(parser)
 
-variant_type <- 'somatic_MC3'
-if(args$v != '')
-  variant_type <- args$v
+variant_type <- args$v
 
 feature_files_dir <- 'feature_file_lists/'
 feature_files_basename <- paste(variant_type, 'feature', 'files', sep='_')
@@ -37,7 +35,7 @@ print(paste('Reading', feature_files[1], 'Done.', sep=' '))
 for(i in 2:length(feature_files)){
   feature_data <- read.table(feature_files[i], header=T, sep=',')
   if(nrow(feature_data) > 0){
-    feature_data_combined <- full_join(feature_data_combined, feature_data[, 1:2]) # merge files
+    feature_data_combined <- full_join(feature_data_combined, feature_data[, 1:2], by="gene") # merge files
     print(paste('Processing', feature_files[i], 'Done.', sep=' '))
   } else{
     print(paste('Empty file: ', feature_files[i], '| Moving on.', sep=' '))

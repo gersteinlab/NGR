@@ -8,6 +8,8 @@ import uuid
 
 from os import path
 
+epsilon = 0.0000001
+
 ## Helper functions to method execution
 
 # calculate softmax of non-zero values
@@ -19,6 +21,11 @@ def nonzero_softmax(x):
         x[nonzero_indices] = softmax_values
         
     return x
+
+# scaling a vector so its values sum to 1
+def totality_scale(values):
+    total = values.sum() + epsilon
+    return (values/total)
 
 # score files have two columns: gene names and scores
 def read_scores(file_name, sorted=True):
