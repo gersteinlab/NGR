@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.special import softmax
-from scipy.spatial import distance
 
 import datetime
 import pickle
@@ -177,27 +176,10 @@ def normalize_matrix(W, file_name_prefix, scaling=True, normalization=''):
 ## Helper functions to evaluation
 
 # sorts a structured numpy array (called list in this script) based on values in column colname 
-def sort_structured_array(input_array, colname, decreasing=True):
+def sort_structured_array(input_array, colname='score', decreasing=True):
     sorted_order = np.argsort(input_array[colname])
     
     if decreasing:
         sorted_order = np.flip(sorted_order)
         
     return input_array[sorted_order]
-
-def calculate_euclidean_distance_basic(input_list1, input_list2, id_colname):
-    map1 = {}
-    for i in range(input_list1.shape[0]):
-        map1[input_list1[id_colname][i]] = i
-        
-    # loop over the second list and build vector to calculate euclidean space
-    ranks1 = np.zeros((input_list1.shape[0], ))
-    ranks2 = np.zeros((input_list2.shape[0], ))
-    for i in range(input_list1.shape[0]):
-        ranks2[i] = i
-        ranks1[i] = map1[input_list2[id_colname][i]] # rank of gene being iterated over in second list, in the first list as saved in the dictionary
-        
-    distance_value = distance.euclidean(ranks1, ranks2)
-    print("Distance: "+str(distance_value))
-    
-    return distance_value

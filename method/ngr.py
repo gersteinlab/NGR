@@ -12,7 +12,7 @@ def run(Y, W, W_index):
     alpha = 0.8
 
     print('\nNGR diffusion starts...\n')    
-    n_iterations = 25; i = 0; S_total_heat = 0
+    n_iterations = 2; i = 0; S_total_heat = 0
     while i < n_iterations:
         Sm = np.repeat(S, S.shape[0], axis=1)
         Sm = (W > 0) * Sm # Step 1: W-based ReLU on S 

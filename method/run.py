@@ -22,7 +22,7 @@ def main():
     # B. Evaluation
     gold_standard_file = '../gene_lists/dependency/Achilles_gene_effect_processed.csv'
     ngr_list, initial_scores = hp.process_ngr_results(initial_scores, ngr_scores, uid=uid) # ngr and initial scores in both structured arrays (i.e. called lists here) are re-ordered w.r.t. to their respective decreasing order of scores
-    eval.evaluate_results(initial_scores, ngr_list, gold_standard_file, comp_measure='euclidean')
+    eval.evaluate_results((initial_scores, ngr_list), gold_standard_file, ('initial', 'ngr'), comp_measure='RBO')
 
 main()
 
