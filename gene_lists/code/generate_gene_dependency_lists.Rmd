@@ -9,65 +9,266 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r pressure, echo=FALSE}
-files_dir <- '../dependency/'
+```{r}
+depMap_datasets <- 'both' #'crispr', 'rnai', or 'both'
+include_cancerMine <- T
+depMap_agg_fn <- 'mean' # 'mean' or 'sd' to aggregate resulting scores
+vals <- 'negative' # 'both' (for all values, positive and negative) or 'negative' (for negative values only)
+output_dir <- 'results/'
+
+all_tissues <- c('all', 'blood', 'kidney', 'leg', 'bone', 'arm', 'pancrea', 'uter', 'ovar', 'bone_marrow', 'lymph_node', 'head', 'neck', 'skin', 'thym', 'colo', 'rect', 'stomach', 'liver', 'lung', 'esophag', 'cervix', 'brain', 'bladder', 'testes', 'spinal', 'anus', 'peni', 'saliv', 'mouth', 'thyroid', 'intestine', 'muscle', 'heart', 'uterus', 'prosta', 'eye', 'vulva')
+selected_tissues <- c('all', 'bladder', 'breast', 'cervix', 'ovary', 'liver', 'colo', 'esophag', 'head|neck', 'kidney', 'liver', 'lung', 'prosta', 'rect', 'stomach', 'thyroid')
+```
+
+
+```{r}
+depMap_files_dir <- '../dependency/'
 file_extension <- 'csv'
-tissues <- c('LUNG', 'BREAST', 'LIVER', 'PROSTATE')
+
+# assess a ranked list based on ranks of known genes
+known_genes_file <- '../known_genes/COSMIC_v90_membership.csv'
+known_genes <- read.table(known_genes_file, quote="\"", stringsAsFactors=F, sep=',')[1]
+
+depMap_from <- c('ADRENAL_CORTEX', 'HAEMATOPOIETIC_AND_LYMPHOID_TISSUE', 'URINARY_TRACT', 'BREAST', 'CERVIX', 'VULVA', 'BILIARY_TRACT', 'LARGE_INTESTINE', 'OESOPHAGUS', 'CENTRAL_NERVOUS_SYSTEM', 'SALIVARY_GLAND', 'UPPER_AERODIGESTIVE_TRACT', 'BONE', 'KIDNEY', 'LIVER', 'LUNG', 'PLEURA', 'AUTONOMIC_GANGLIA', 'PROSTATE', 'OVARY', 'PANCREAS', 'SOFT_TISSUE', 'THYROID', 'SKIN', 'STOMACH', 'ENDOMETRIUM', 'BLADDER', 'FIBROBLAST', 'GASTROINTESTINAL_TRACT', 'SMALL_INTESTINE', 'UVEA')
+
+depMap_to <- c('ADRENAL_CORTEX_brain', 'HAEMATOPOIETIC_AND_LYMPHOID_TISSUE_blood_lymph_node_bone_marrow', 'URINARY_TRACT_bladder', 'BREAST_breast', 'CERVIX_cervix', 'VULVA_vulva', 'BILIARY_TRACT_liver', 'LARGE_INTESTINE_intestine', 'OESOPHAGUS_esophag', 'CENTRAL_NERVOUS_SYSTEM_brain', 'SALIVARY_GLAND_saliv', 'UPPER_AERODIGESTIVE_TRACT_bone_esophag', 'BONE_bone', 'KIDNEY_kidney', 'LIVER_liver', 'LUNG_lung', 'PLEURA_lung', 'AUTONOMIC_GANGLIA_brain', 'PROSTATE_prostate', 'OVARY_ovary', 'PANCREAS_pancrea', 'SOFT_TISSUE_blood_brain_muscle_lymph_node', 'THYROID_thyroid', 'SKIN_skin', 'STOMACH_stomach', 'ENDOMETRIUM_uterus', 'BLADDER_bladder', 'FIBROBLAST_skin', 'GASTROINTESTINAL_TRACT_stomach', 'SMALL_INTESTINE_intestine', 'UVEA_eye')
+
+# modify cancer types in CancerMine to include tissue
+cancerMine_from=c('luekemia', 'nephroblastoma', 'lymphoma', 'Ewing_sarcoma', 'endometrial_cancer', 'renal', 'myeloid', 'adenoid_cystic_carcinoma', 'squamous_cell_carcinoma', 'melanoma', 'basal', 'thymoma', 'colorectal_adenocarcinoma', 'serous_cystadenocarcinoma', 'endometrial_adenocarcinoma', 'islet_cell_tumor', 'gastr', 'intrahepatic_cholangiocarcinoma', 'carcinosarcoma', 'Kaposis_sarcoma', 'myxoid_chondrosarcoma', 'endometrial_squamous_cell_carcinoma', 'hereditary_Wilms_tumor', 'myelodysplastic/myeloproliferative_neoplasm', 'ampulla_of_Vater_adenocarcinoma','retroperitoneal_cancer', 'thoracic_cancer', 'spinal', 'medullomyoblastoma', 'nerv', 'neuro', 'cutaneous_Pagets_disease', 'pilomyxoid_astrocytoma', 'papillary_adenocarcinoma', 'perivascular_epithelioid_cell_tumor', 'cerebe', 'CLL/SLL', 'juxtacortical_osteosarcoma', 'synovial_sarcoma', 'retin', 'myelodysplastic_syndrome', 'cholangiocarcinoma', 'glioblastoma_multiforme', 'osteosarcoma', 'multiple_myeloma', 'mast_cell_neoplasm', 'alveolar_rhabdomyosarcoma', 'myelofibrosis', 'rhabdomyosarcoma', 'female_reproductive_organ_cancer', 'grade_III_astrocytoma', 'Merkel_cell_carcinoma', 'invasive_lobular_carcinoma', 'spindle_cell_carcinoma', 'mammary_Pagets_disease', 'ampulla_of_Vater_carcinoma', 'Sezarys_disease', 'conventional_central_osteosarcoma', 'urin', 'oligodendroglioma', 'malignant_fibroxanthoma', 'ocula', 'HCL-V', 'sebaceous_adenocarcinoma', 'histiocytoma', 'thym', 'dermatofibrosarcoma_protuberans', 'gliosarcoma', 'Richters_syndrome', 'hepatocellular', 'endometrial_carcinoma', 'plasmacytoma', 'malignant_mesothelioma', 'meningioma', 'oral', 'pilocytic_astrocytoma', 'ductal', 'angiosarcoma', 'reticulosarcoma', 'choriocarcinoma', 'chondroblastoma', 'mycosis_fungoides', 'B-cell', 'T-cell', 'choroid_plexus_carcinoma', 'testi', 'malignant_ependymoma', 'mucoepidermoid_carcinoma', 'eccrine_porocarcinoma', 'adenosquamous_carcinoma', 'scirrhous_adenocarcinoma', 'supratentorial_cancer', 'maxillary_sinus_cancer', 'Waldenstroems_macroglobulinemia', 'malignant_glioma', 'myeloproliferative_neoplasm', 'rhabdoid_cancer', 'hematologic_cancer', 'transitional_cell_carcinoma', 'papillary_carcinoma', 'adrenal_cortex_cancer', 'clear_cell_adenocarcinoma', 'astrocytoma', 'glomangiosarcoma', 'pineal_gland_cancer', 'teratoma', 'granulosa_cell_tumor', 'adenosarcoma', 'Hodgkin', 'Barretts_adenocarcinoma', 'follicular_dendritic_cell_sarcoma', 'distal_biliary_tract_carcinoma', 'pulmona', 'well-differentiated_liposarcoma', 'congenital_mesoblastic_nephroma', 'amelanotic_melanoma', 'ganglioneuroblastoma', 'signet_ring_cell_adenocarcinoma', 'pleomorphic_rhabdomyosarcoma', 'acinar_cell_carcinoma', 'mixed_cell_type_cancer', 'nodular_medulloblastoma', 'card', 'urinary_system', 'fibr')
+
+cancerMine_to=c('leukemia_blood', 'nephroblastoma_kidney', 'lymphoma_bone_marrow_lymph_node_blood', 'Ewing_sarcoma_leg_bone_arm', 'renal_kidney', 'endometrial_cancer_uterus', 'myeloid_blood_bone_marrow', 'adenoid_cystic_carcinoma_head_neck_breast_skin_breast_vulva', 'squamous_cell_carcinoma_skin', 'melanoma_skin', 'basal_skin', 'thymona_thymus', 'colorectal_adenocarcinoma_colon_rectum', 'serous_cystadenocarcinoma_ovary', 'endometrial_adenocarcinoma_uter', 'islet_cell_tumor_pacreas', 'gastr_stomach', 'intrahepatic_cholangiocarcinoma_liver', 'carcinosarcoma_skin_lung_esophagus_pancreas_colon_uterus_ovary', 'Kaposis_sarcoma_skin', 'myxoid_chondrosarcoma_bone', 'endometrial_squamous_cell_carcinoma_cervix', 'hereditary_Wilms_tumor_kidney', 'myelodysplastic/myeloproliferative_neoplasm_bone_marrow', 'ampulla_of_Vater_adenocarcinoma_liver', 'retroperitoneal_cancer_bone', 'thoracic_cancer_lung', 'spinal_bone', 'medullomyoblastoma_brain', 'nerv_brain', 'neuro_brain', 'cutaneous_Pagets_disease_skin', 'pilomyxoid_astrocytoma_brain', 'papillary_adenocarcinoma_lung', 'perivascular_epithelioid_cell_tumor_uterus_ovary_kidney_lung', 'cerebe_brain', 'CLL/SLL_blood', 'juxtacortical_osteosarcoma_bone', 'synovial_sarcoma_bone_blood_brain', 'retin_eye', 'myelodysplastic_syndrome_blood', 'cholangiocarcinoma_liver', 'glioblastoma_multiforme_brain', 'osteosarcoma_bone', 'multiple_myeloma_blood_bone_marrow', 'mast_cell_neoplasm_blood', 'alveolar_rhabdomyosarcoma_lung', 'myelofibrosis_bone_marrow', 'rhabdomyosarcoma_uterus_bladder_muscle', 'female_reproductive_organ_cancer_ovary_uterus_cervix_vulva', 'grade_III_astrocytoma', 'Merkel_cell_carcinoma_skin', 'invasive_lobular_carcinoma_breast', 'spindle_cell_carcinoma_skin', 'mammary_Pagets_disease_breast', 'ampulla_of_Vater_carcinoma', 'Sezarys_disease_lymph_node', 'conventional_central_osteosarcoma_bone', 'urin_bladder', 'oligodendroglioma_brain', 'malignant_fibroxanthoma_skin_head_neck', 'ocula_eye', 'HCL-V_blood', 'sebaceous_adenocarcinoma_skin', 'histiocytoma_skin', 'thym_thymus', 'dermatofibrosarcoma_protuberans_skin', 'gliosarcoma_brain', 'Richters_syndrome_blood', 'hepatocellular_carcinoma_liver', 'endometrial_carcinoma_uterus', 'plasmacytoma_blood', 'malignant_mesothelioma_lung_stomach_heart', 'meningioma_brain', 'oral_mouth', 'pilocytic_astrocytoma_brain', 'ductal_breast', 'angiosarcoma_blood', 'reticulosarcoma_lymph_node', 'choriocarcinoma_uterus', 'chondroblastoma_bone', 'mycosis_fungoides_blood', 'B-cell_blood', 'T-cell_blood', 'choroid_plexus_carcinoma_brain', 'testi_testes', 'malignant_ependymoma_brain', 'mucoepidermoid_carcinoma_saliv', 'eccrine_porocarcinoma_skin', 'adenosquamous_carcinoma_lung_skin_penis', 'scirrhous_adenocarcinoma_stomach_intestine', 'supratentorial_cancer_brain', 'maxillary_sinus_cancer_bone', 'Waldenstroems_macroglobulinemia_lymph_node', 'malignant_glioma_brain', 'myeloproliferative_neoplasm_blood', 'rhabdoid_cancer_nerv', 'hematologic_cancer_blood_lymph_node_bone_marrow', 'transitional_cell_carcinoma_urin', 'papillary_carcinoma_thyroid', 'adrenal_cortex_cancer_kidney', 'clear_cell_adenocarcinoma_cervix', 'astrocytoma_brain', 'glomangiosarcoma_skin', 'pineal_gland_cancer_head', 'teratoma_bone_muscle', 'granulosa_cell_tumor_ovary', 'adenosarcoma_uterus_ovary_cervix_liver_bladder_kidney_intestine', 'Hodgkin_lymph_node', 'Barretts_adenocarcinoma_esophagus', 'follicular_dendritic_cell_sarcoma_blood', 'distal_biliary_tract_carcinoma_liver', 'pulmona_lungs', 'well-differentiated_liposarcoma_bone', 'congenital_mesoblastic_nephroma_kidney', 'amelanotic_melanoma_skin', 'ganglioneuroblastoma_nerv', 'signet_ring_cell_adenocarcinoma_colon_rectum', 'pleomorphic_rhabdomyosarcoma_bone_muscle', 'acinar_cell_carcinoma_pancreas', 'mixed_cell_type_cancer_ovary_uterus', 'nodular_medulloblastoma_brain', 'card_heart', 'urinary_system_bladder', 'fibr_skin')
 ```
 
 ```{r}
 # CRISPR Knockout file (Achilles_gene_effect.csv)
-file_prefix <- 'Achilles_gene_effect'
-scores_filename <- paste(files_dir, file_prefix, '.', file_extension, sep='')
+# Each resulting depMap_data data frame has genes as columns and cell lines as cell lines with tissues being part of the cell line names)
+crispr_file_prefix <- 'Achilles_gene_effect'
+scores_filename <- paste(depMap_files_dir, crispr_file_prefix, '.', file_extension, sep='')
 
-cell_line_filename <- paste(files_dir, 'CCLE_annotations_curatedv3.csv', sep='')
-cell_line_data <- read.table(cell_line_filename, header=T, row.names=NULL, sep=',')
+cell_line_filename <- paste(depMap_files_dir, 'CCLE_annotations_curatedv3.csv', sep='')
+cell_line_data <- read.table(cell_line_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
 cell_line_data <- cell_line_data[!is.na(cell_line_data$depMapID), ]
 
-dep_data <- read.table(scores_filename, header=T, row.names=NULL, sep=',')
-cell_lines <- dep_data[, 'X']
-dep_data <- dep_data[, 2:ncol(dep_data)]
+crispr_depMap_data <- read.table(scores_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
+cell_lines <- crispr_depMap_data[, 'X']
+crispr_depMap_data <- crispr_depMap_data[, 2:ncol(crispr_depMap_data)]
+dot_indices <- regexpr('\\.\\.', colnames(crispr_depMap_data)) # clean col names
+colnames(crispr_depMap_data) <- substr(colnames(crispr_depMap_data), 0, dot_indices-1) # remove dots and their inline text to have gene names
 
-dot_indices <- regexpr('\\.\\.', colnames(dep_data))
-colnames(dep_data) <- substr(colnames(dep_data), 0, dot_indices-1) # remove dots and their inline text to have gene names
-  
-for(i in 1:length(tissues)){
-  tissue_indices <- grep(tissues[i], cell_line_data[, 'Tissue'])
-  tissue_cell_lines <- as.character(cell_line_data[tissue_indices, 'depMapID'])
-  
-  tissue_data <- dep_data[cell_lines %in% tissue_cell_lines, ]
-  tissue_data <- colMeans(tissue_data, na.rm=T) # average over a tissue's cell lines
-  tissue_data <- data.frame(gene=names(tissue_data), dep_score=tissue_data)
-  tissue_data <- tissue_data[!is.na(tissue_data[, 'dep_score']), ]
-  
-  tissue_scores_filename <- paste(files_dir, file_prefix, '_', tolower(tissues[i]), '.', file_extension, sep='')
+# update cell line names to include tissue
+cell_line_data[, 'Tissue'] <- gsub(' ', '_', cell_line_data[, 'Tissue'])
 
-  write.table(tissue_data, tissue_scores_filename, row.names=F, col.names=T, quote=F, sep=',')
-}
+inds_of_tissue_cell_lines <- which(cell_lines %in% cell_line_data[, 'depMapID'])
+cell_lines[inds_of_tissue_cell_lines] <- paste(cell_lines[inds_of_tissue_cell_lines], cell_line_data[inds_of_tissue_cell_lines, 'Tissue'], sep='_')
+
+library(mgsub)
+cell_lines <- mgsub(cell_lines, depMap_from, depMap_to)
+
+rownames(crispr_depMap_data) <- cell_lines # example: ACH-000792_PANCREAS for cell lines with tissue values, ACH-001134 for others
+crispr_depMap_data[is.na(crispr_depMap_data)] <- 0
 ```
 
 ```{r}
-# RNAi file (D2_combined_gene_dep_scores.csv)
-file_prefix <- 'D2_combined_gene_dep_scores'
-scores_filename <- paste(files_dir, file_prefix, '.', file_extension, sep='')
+# RNAi file (D2_combined_gene_depMap_scores.csv)
+file_prefix <- 'D2_combined_gene_dep_scores' 
+scores_filename <- paste(depMap_files_dir, file_prefix, '.', file_extension, sep='')
 
-dep_data <- read.table(scores_filename, header=T, row.names=NULL, sep=',')
-genes <- dep_data[, 'X']
+rnai_depMap_data <- read.table(scores_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
+genes <- rnai_depMap_data[, 'X']
 
 bracket_indices <- regexpr('\\(', genes)
 genes <- substr(genes, 0, bracket_indices-2) # remove brackets and their inline text to have gene names
 
-dep_data <- dep_data[, 2:ncol(dep_data)]
+rnai_depMap_data <- rnai_depMap_data[, 2:ncol(rnai_depMap_data)]
+rownames(rnai_depMap_data) <- genes
+rnai_depMap_data <- t(rnai_depMap_data) # so that both data frames have genes as columns and rows as cell lines
 
-for(i in 1:length(tissues)){
-  tissue_indices <- grep(tissues[i], colnames(dep_data))
-  tissue_data <- dep_data[, tissue_indices]
-  tissue_data <- rowMeans(tissue_data, na.rm=T) # average over a tissue's cell lines
-  tissue_data <- data.frame(gene=genes, dep_score=tissue_data)
-  tissue_data <- tissue_data[!is.na(tissue_data[, 'dep_score']), ]
-    
-  tissue_scores_filename <- paste(files_dir, file_prefix, '_', tolower(tissues[i]), '.', file_extension, sep='')
+library(mgsub)
+rownames(rnai_depMap_data) <- mgsub(rownames(rnai_depMap_data), depMap_from, depMap_to)
+rnai_depMap_data[is.na(rnai_depMap_data)] <- 0
+```
 
-  write.table(tissue_data, tissue_scores_filename, row.names=F, col.names=T, quote=F, sep=',')
+```{r}
+# If only negative values are needed, replace positive values with 0
+if(vals == 'negative'){
+  crispr_depMap_data[crispr_depMap_data > 0] <- 0
+  rnai_depMap_data[rnai_depMap_data > 0] <- 0
 }
+```
+
+```{r}
+# If both depMap datasets are needed, combine them into one data frame
+if(depMap_datasets == 'both'){
+  common_genes <- intersect(colnames(crispr_depMap_data), colnames(rnai_depMap_data))
+  crispr_depMap_data <- crispr_depMap_data[, common_genes]
+  rnai_depMap_data <- rnai_depMap_data[, common_genes]
+  combined_depMap_data <- rbind(crispr_depMap_data, rnai_depMap_data)
+}
+```
+
+```{r}
+# DepMap data setting
+if(depMap_datasets == 'both'){
+  depMap_data <- combined_depMap_data
+} else if(depMap_datasets == 'crispr'){
+  depMap_data <- crispr_depMap_data
+} else if(depMap_dataset == 'rnai'){
+  depMap_data <- rnai_depMap_data
+} # verified
+```
+
+```{r}
+# a function for slightly-adjusted minmax normalization
+normalize <- function(x, epsilon=0.02)
+{
+    return((x-min(x)+epsilon) /(max(x)-min(x)))
+}
+
+# a function to perform DepMap data aggregation & normalization
+normalize_depMap_scores <- function(depMap_data, depMap_agg_fn){
+  if(depMap_agg_fn == 'mean'){
+    depMap_scores <- colMeans(depMap_data)
+    depMap_scores <- sort(depMap_scores)
+  } else if(depMap_agg_fn == 'sd'){
+    depMap_scores <- apply(depMap_data, 2, sd)
+    depMap_scores <- sort(depMap_scores, decreasing=T)
+  }
+  
+  sum(names(sort(normalize(depMap_scores))) != names(sort(depMap_scores))) # sanity check: must be 0 so normalization of negative values works
+  normalized_depMap_scores <- normalize(depMap_scores)
+  
+  return(normalized_depMap_scores)
+}
+```
+
+```{r}
+# Read cancerMine data + a function to generate normalized scores
+library(plyr)
+
+# Combine with CancerMine to give a bump to known cancer genes
+cancerMine_genes_file <- '../literature/cancermine_collated_v20_Jan2020.tsv'
+cancerMine_data <- read.table(cancerMine_genes_file, header=T, quote="\"", stringsAsFactors=F, fill=T, sep='\t')
+cancerMine_data[, 'cancer_normalized'] <- gsub(' ', '_', cancerMine_data[, 'cancer_normalized'])
+
+# replace cancer types to include tissue name
+library(mgsub)
+cancerMine_data$cancer_normalized_with_tissue_name <- mgsub(cancerMine_data$cancer_normalized, cancerMine_from, cancerMine_to)
+```
+
+
+```{r}
+# a function to normalize CancerMine 
+normalize_citation_scores <- function(cancerMine_data){
+  cm_citations_agg <- aggregate(x = cancerMine_data$citation_count, by = list(cancerMine_data$gene_normalized), FUN=sum) # aggregate values across cancer types
+  colnames(cm_citations_agg) <- c('gene', 'citation_count')
+
+  cm_citations_agg <- cm_citations_agg[order(cm_citations_agg[, 'citation_count'], decreasing=T), ] 
+  normalized_citations <- rep(0, nrow(cm_citations_agg))
+  
+  # Because of the power law distribution of citations, the customized scheme of normalized score will be ass follows:
+  # Top 5% or top ~30 genes (whichever is smaller): 1
+  five_percent_mark <- min(30, floor(0.05 * nrow(cm_citations_agg)))
+  five_percent_mark_value <- cm_citations_agg[five_percent_mark, 'citation_count']
+  normalized_citations[cm_citations_agg[, 'citation_count'] >= five_percent_mark_value] <- 1
+
+  # Top 6-10% or top 31-60: 0.75
+  ten_percent_mark_value <- cm_citations_agg[2*five_percent_mark, 'citation_count']
+  normalized_citations[cm_citations_agg[, 'citation_count'] < five_percent_mark_value & cm_citations_agg[, 'citation_count'] >= ten_percent_mark_value] <- 0.75
+  
+  # All other genes: minmax normalized score / 2 (resulting range of values = [0, 0.5])
+  normalized_citations[cm_citations_agg[, 'citation_count'] < ten_percent_mark_value] <- (normalize(cm_citations_agg[cm_citations_agg[, 'citation_count'] < ten_percent_mark_value, 'citation_count'], epsilon=1) / 2)
+  
+  names(normalized_citations) <- cm_citations_agg[, 'gene']
+  return(normalized_citations)
+}
+```
+
+```{r}
+# a function to combine DepMap and CancerMine scores: inputs are two lists with genes as names of cells
+combine_depMap_and_cancerMine_scores <- function(normalized_depMap_scores, normalized_citations, depMap_agg_fn='mean'){
+  depMap_citation_common_genes <- intersect(names(normalized_depMap_scores), names(normalized_citations))
+  combined_normalized_scores <- normalized_depMap_scores # initialize combined list
+  
+  if (depMap_agg_fn == 'mean'){ # functions where a lower value is "better", i.e. a lower value lead to a better rank; subtract citation normalized scores to bump genes of the literature
+    combined_normalized_scores[depMap_citation_common_genes] <- combined_normalized_scores[depMap_citation_common_genes] - normalized_citations[depMap_citation_common_genes]
+    combined_normalized_scores <- sort(normalize(combined_normalized_scores))
+  }else if(depMap_agg_fn == 'sd'){
+      combined_normalized_scores[depMap_citation_common_genes] <- combined_normalized_scores[depMap_citation_common_genes] + normalized_citations[depMap_citation_common_genes]
+      combined_normalized_scores <- sort(normalize(combined_normalized_scores, decreasing=T))
+  }
+}
+```
+
+```{r}
+# a function to write file
+write_scores_file <- function(scores, depMap_datasets, vals, depMap_agg_fn, tissue, include_cancerMine, output_dir=''){
+  scores_filename <- paste(depMap_datasets, 'depmap', vals, 'values', depMap_agg_fn, 'scores', tissue, 'tissue', sep='_')
+  if(include_cancerMine == T)
+    scores_filename <- paste('cancerMine', scores_filename, sep='_')
+  scores_filename <- paste(output_dir, scores_filename, '.csv', sep='')
+  
+  df_to_write <- data.frame(gene=names(scores), score=scores, row.names=NULL)
+  
+  print(paste('Generating ', scores_filename, '...', sep=''))
+  write.table(df_to_write, scores_filename, row.names=F, col.names=T, quote=F, sep=',')
+}
+```
+
+```{r}
+# to select per tissue
+# for depMap_data: select tissue rows (from rownames), then normalize
+# for CancerMine: select tissue rows (from cancer_normalized_with_tissue) then normalize
+for(t in selected_tissues){
+  tryCatch(
+    expr = {
+        print(paste('Working on tissue ', t, '...', sep=''))
+  
+        selected_depMap_data <- depMap_data
+        selected_cancerMine_data <- cancerMine_data
+        
+        if(t != 'all'){
+          t_depMap_inds <- grep(t, rownames(depMap_data))
+          if(length(t_depMap_inds) > 0)
+            selected_depMap_data <- selected_depMap_data[t_depMap_inds, ]
+            
+          t_cancerMine_inds <- grep(t, cancerMine_data[, 'cancer_normalized_with_tissue_name'])
+          if(length(t_cancerMine_inds) > 0)
+            selected_cancerMine_data <- cancerMine_data[t_cancerMine_inds, ]
+        }
+        
+        normalized_citation_scores <- normalize_citation_scores(selected_cancerMine_data)
+        normalized_depMap_scores <- normalize_depMap_scores(selected_depMap_data, depMap_agg_fn)
+        combined_normalized_scores <- combine_depMap_and_cancerMine_scores(normalized_depMap_scores, normalized_citation_scores, depMap_agg_fn=depMap_agg_fn)
+        
+        # checking fast where COSMIC known genes reside in resulting list to assess the latter
+        known_gene_ranks <- which(names(combined_normalized_scores) %in% known_genes$V1)
+        
+        # write file
+        write_scores_file(combined_normalized_scores, depMap_datasets, vals, depMap_agg_fn, tissue=t, include_cancerMine, output_dir)
+    }, error = function(e){
+    print(e)
+  })
+}
+```
+
+```{r}
+# Meant for Pancancer list, applicable to other lists (optional)
+# assess GOLD standard using Wilcoxon rank-sum test (ofr enrichment of known genes and their rank in the upper part of the list)
+for (N in seq(100, length(known_gene_ranks)+100, 100)){
+  N <- min(N, length(known_gene_ranks))
+  known_gene_ranks <- which(names(combined_normalized_scores) %in% known_genes$V1)
+  wt <- wilcox.test(known_gene_ranks[1:N], 1:max(known_gene_ranks[1:N]), alternative='less')
+  print(paste('Wilcoxon rank-sum: p-value=', wt$p.value, sep=''))
+} # last p_value is the most important
+```
+
+```{r}
+# visualize scores (optional)
+uniform_sample <- uniform_sample <- as.integer(seq(1, length(names(combined_normalized_scores)), (length(names(combined_normalized_scores)) / length(known_gene_ranks))))
+distributed_labels <- cbind(uniform_sample, known_gene_ranks)
+
+# run commands on console
+plot(distributed_labels[, 1], rep(0.4, nrow(distributed_labels)), cex=0.25, col="blue", pch=19, xlab='Known gene rank')
+points(distributed_labels[, 2], rep(0.3, nrow(distributed_labels)), cex=0.25, col="darkgreen", pch=19)
+legend("topleft", c("H0 (uniform)","H1 (GOLD standard)"), fill=c("blue","darkgreen"))
 ```
