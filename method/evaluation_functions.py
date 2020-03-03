@@ -1,15 +1,19 @@
 import numpy as np
 import scipy.stats as st
 from scipy.spatial import distance
-from scipy.stats import weightedtau
 
 import helper_functions as hp
 
 # initial_scores is a structured array with two columns: 'gene' and 'score'
-# result_genes and result_scores are the lists of genes and resulting scores to be evaluated
+# result_genes and result_scores are 2-D structured arrays: lists of genes and resulting scores to be evaluated
 # gold_standard_file referes to csv file with two columns: 'gene' and 'score'
 # comparison measure options: euclidean (Euclidean distance between individual genes w.r.t. gold standard)
-def evaluate_results(ranked_lists, gold_standard_file, list_names, comp_measure='RBO', id_colname='gene', value_colname='score'):
+def evaluate_results(ranked_lists, gold_standard_file, list_names, comp_measures=('AO'), id_colname='gene', value_colname='score'):
+    header = ''.ljust(20)
+    for cm in comp_measures:
+        header += '{0: <15}'.format(cm)
+    print(header, end='')
+    
     #  read gold standard structured array
     gold_standard_list = np.genfromtxt(gold_standard_file, dtype='U25,f8', names=('gene', 'score'), skip_header=1, delimiter=',')
     
@@ -17,56 +21,53 @@ def evaluate_results(ranked_lists, gold_standard_file, list_names, comp_measure=
     for l in range(len(list_names)):        
 
         common_ids, gold_standard_inds, ranked_list_inds = np.intersect1d(gold_standard_list[id_colname], ranked_lists[l][id_colname], return_indices=True)
-        
+
         # sort lists w.r.t. score_colname
         ranked_list = hp.sort_structured_array(ranked_lists[l][ranked_list_inds], decreasing=True)
         gold_standard_list = hp.sort_structured_array(gold_standard_list[gold_standard_inds], decreasing=True)
-        
-        print("["+list_names[l]+"]:", end="")
-        if 'dist' in comp_measure:
-            distance_measure = 'euclidean_dist'
-            if 'manhattan' in comp_measure:
-                distance_measure = 'manhattan_dist' 
 
-            score = distance_measure(ranked_list, gold_standard_list, distance_measure=distance_measure, id_colname=id_colname)
-        elif comp_measure == 'RBO':
-            score = RBO(ranked_list, gold_standard_list, id_colname=id_colname)
-        elif comp_measure == 'AO':
-            score = AO(ranked_list, gold_standard_list, depth=ranked_list.shape[0], id_colname=id_colname)
-        elif comp_measure == 'weighted_tau':
-            score, _ = weighted_tau(ranked_list, gold_standard_list, id_colname=id_colname)
+        print('\n{0: <20}'.format(list_names[l]), end="")
+        for cm in comp_measures:
+            if 'dist' in cm:
+                dist_measure = 'euclidean_dist'
+                if 'manhattan' in cm:
+                    dist_measure = 'manhattan_dist' 
+    
+                score = distance_measure(ranked_list[id_colname], gold_standard_list[id_colname], measure=dist_measure)
+                score /= ranked_list.shape[0] # normalize distance
+            elif cm == 'RBO':
+                score = RBO(ranked_list[id_colname], gold_standard_list[id_colname])
+            elif cm == 'AO':
+                score = AO(ranked_list[id_colname], gold_standard_list[id_colname], depth=ranked_list.shape[0])
+            elif 'tau' in cm:
+                if 'weighted' in cm:
+                    score, _ = weighted_tau(ranked_list[id_colname], gold_standard_list[id_colname])
+                else:
+                    score, _ = tau(ranked_list[id_colname], gold_standard_list[id_colname])
             
-        print(score)
+            score = round(score, 3)
+            print('{0: <15}'.format(score), end="")
 
 # EVALUATION FUNCTIONS:
-# All evaluation functions below assume lists are sorted in decreasing order; each input list is a structured
-# array with two columns titled 'gene' and 'score' unless noted otherwise
+# All evaluation functions below assume lists are sorted in decreasing order; each input list is 1-D (i.e. a column from the structured array used in evaluate_results() above
+# In these functions, a list is 1-D
 
 # calculates Eucliden or Manhattan distance between ranks of elements in two ordered lists
-def distance_measure(input_list1, input_list2, distance_measure='manhattan_dist', id_colname='gene'):
-    map1 = {}
-    for i in range(input_list1.shape[0]):
-        map1[input_list1[id_colname][i]] = i
-        
-    # loop over the second list and build vector to calculate euclidean space
-    ranks1 = np.zeros((input_list1.shape[0], ))
-    ranks2 = np.zeros((input_list2.shape[0], ))
-    for i in range(input_list1.shape[0]):
-        ranks2[i] = i
-        ranks1[i] = map1[input_list2[id_colname][i]] # rank of gene being iterated over in second list, in the first list as saved in the dictionary
+def distance_measure(input_list1, input_list2, measure='manhattan_dist'):
+    ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)
 
-    if 'manhattan' in distance_measure:
+    if 'manhattan' in measure:
         distance_value = np.sum(abs(ranks1 - ranks2))
     else:
         distance_value = distance.euclidean(ranks1, ranks2)
-        
+
     return distance_value
 
 # Average overlap as per implementation by Ritesh Agrawal at https://github.com/ragrawal/measures/blob/master/measures/rankedlist/
 # See: https://ragrawal.wordpress.com/2013/01/18/comparing-ranked-list/
-def AO(input_list1, input_list2, depth = 10, id_colname='gene'):
-    l1 = list(input_list1[id_colname])
-    l2 = list(input_list2[id_colname])
+def AO(input_list1, input_list2, depth = 10):
+    l1 = list(input_list1)
+    l2 = list(input_list2)
 
     if l1 == None: l1 = []
     if l2 == None: l2 = []
@@ -106,9 +107,9 @@ def AO(input_list1, input_list2, depth = 10, id_colname='gene'):
 
 # Rank Bias Overlap score as per implementation by Ritesh Agrawal at https://github.com/ragrawal/measures/blob/master/measures/rankedlist/
 # See: https://ragrawal.wordpress.com/2013/01/18/comparing-ranked-list/
-def RBO(input_list1, input_list2, p = 0.98, id_colname='gene'):
-    l1 = list(input_list1[id_colname])
-    l2 = list(input_list2[id_colname])
+def RBO(input_list1, input_list2, p = 0.98):
+    l1 = list(input_list1)
+    l2 = list(input_list2)
     
     if l1 == None: l1 = []
     if l2 == None: l2 = []
@@ -153,19 +154,14 @@ def RBO(input_list1, input_list2, p = 0.98, id_colname='gene'):
     rbo_score = (1-p)/p*(sum1+sum2)+sum3
     return rbo_score
 
-# A wrapper function for weighted tau. 
+# A wrapper function for weighted Kendall tau measure 
 # See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.weightedtau.html
-def weighted_tau(input_list1, input_list2, id_colname='gene'):
-    map1 = {}
-    for i in range(input_list1.shape[0]):
-        map1[input_list1[id_colname][i]] = i
-        
-    # loop over the second list and build vector to calculate euclidean space
-    ranks1 = np.zeros((input_list1.shape[0], ))
-    ranks2 = np.zeros((input_list2.shape[0], ))
-    for i in range(input_list1.shape[0]):
-        ranks2[i] = i
-        ranks1[i] = map1[input_list2[id_colname][i]] # rank of gene being iterated over in second list, in the first (gold standard) list as saved in the dictionary
+def weighted_tau(input_list1, input_list2):
+    ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)
+    return st.weightedtau(ranks2, ranks1, rank=False)
 
-    return st.weightedtau(ranks1, ranks2, rank=False)
-    
+# A wrapper function for Kendall tau measure
+# See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kendalltau.html
+def tau(input_list1, input_list2):
+    ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)
+    return st.kendalltau(ranks2, ranks1)

@@ -194,7 +194,7 @@ combine_depMap_and_cancerMine_scores <- function(normalized_depMap_scores, norma
     combined_normalized_scores <- sort(normalize(combined_normalized_scores))
   }else if(depMap_agg_fn == 'sd'){
       combined_normalized_scores[depMap_citation_common_genes] <- combined_normalized_scores[depMap_citation_common_genes] + normalized_citations[depMap_citation_common_genes]
-      combined_normalized_scores <- sort(normalize(combined_normalized_scores, decreasing=T))
+      combined_normalized_scores <- sort(normalize(combined_normalized_scores), decreasing=T)
   }
 }
 ```
@@ -206,6 +206,7 @@ write_scores_file <- function(scores, depMap_datasets, vals, depMap_agg_fn, tiss
   if(include_cancerMine == T)
     scores_filename <- paste('cancerMine', scores_filename, sep='_')
   scores_filename <- paste(output_dir, scores_filename, '.csv', sep='')
+  scores_filename <- gsub('\\|', '-', scores_filename)
   
   df_to_write <- data.frame(gene=names(scores), score=scores, row.names=NULL)
   

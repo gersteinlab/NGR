@@ -79,8 +79,8 @@ def read_matrix(file_name_prefix, sorted=True, selected_genes=[]):
         common_genes = np.intersect1d(matrix_index, selected_genes)
         common_genes_in_matrix_index = np.searchsorted(matrix_index, common_genes) # indices of common genes in the matrix
 
-        print(selected_genes)
-        print(common_genes_in_matrix_index)
+        #print(selected_genes)
+        #print(common_genes_in_matrix_index)
         
         matrix = matrix[:, common_genes_in_matrix_index] # reorder matrix rows and cols
         matrix = matrix[common_genes_in_matrix_index, :]
@@ -97,19 +97,17 @@ def get_ngr_inputs(initial_score_file, matrix_file_prefix, matrix_scaling=True, 
     initial_scores = read_scores(initial_score_file, sorted=True) # numpy structured array
     
     ppi_matrix, ppi_matrix_index = read_matrix(matrix_file_prefix, sorted=True, selected_genes=initial_scores['gene'])
-
-    # A. Method Execution
-
+    #print(ppi_matrix)
+    
     # reorder initial scores to match order of (NxN) matrix cols and rows; reordered list of scores to be provided to the method to act as Y (i.e. scores) vector
     initial_scores = initial_scores[np.argsort(initial_scores['gene'])] # this step is needed for searchsorted() to work
     initial_scores_new_order = np.searchsorted(initial_scores['gene'], ppi_matrix_index) # select only common genes for initial_scores
     initial_scores = initial_scores[initial_scores_new_order]
-    print(initial_scores['gene'])
+    #print(initial_scores['gene'])
 
-    # weight matrix normalization
-    ppi_matrix = normalize_matrix(ppi_matrix, matrix_file_prefix, scaling=matrix_scaling, normalization=matrix_normalization_method)
-    print(ppi_matrix)
-
+    # filter out genes without scores in the ppi matrix
+    ppi_matrix = normalize_matrix(ppi_matrix, matrix_file_prefix, normalization=matrix_normalization_method) # normalize weight matrix
+    
     return initial_scores, ppi_matrix, ppi_matrix_index
 
 # initial_scores is a structured array with two columns: 'gene' and 'score'
@@ -137,10 +135,10 @@ def process_ngr_results(initial_scores, ngr_scores, save_files=True, uid=''):
 
     return ngr_list, initial_scores
 
-# scaling divides all values in the matrix by the matrix-wide maximum to shrink values to [0, 1]
-def normalize_matrix(W, file_name_prefix, scaling=True, normalization=''):
+def normalize_matrix(W, file_name_prefix, normalization=''):
     # pickle file name
-    matrix_pickle_file_name = file_name_prefix+'_normalized'
+    matrix_pickle_file_name = file_name_prefix+'_'+str(W.shape[0])+'_genes_normalized'
+    
     if len(normalization) == 0:
         print('\nMatrix normalization method not provided; default is personalized pageRank: W = D^-1/2 A D^-1/2')
     else:
@@ -153,29 +151,32 @@ def normalize_matrix(W, file_name_prefix, scaling=True, normalization=''):
         W = pickle.load(open(matrix_pickle_file_name, 'rb'))
         print('\nNormalized matrix reading done. Existing pickle loaded.')
     else: # normalize matrix and dump the pickle
-        if scaling: # scale the matrix to values in [0,1]
-            W /= np.max(W)
-    
-        D = np.diag(np.sum((W > 0), axis=1)) # D is diagonal degree matrix
+        D = np.diag(np.sum(W, axis=0)) # D is diagonal degree matrix
+
         if normalization == 'diffusion_kernel':
             W = D - W
         elif normalization in ('insulated_diffusion', 'electric_network'):
             W = np.matmul(W, np.linalg.inv(D))
         else: # personalized_pagerank (default)
             D12 = np.linalg.inv(np.sqrt(D))
-            W = np.matmul(np.matmul(W, D12), D12)        
+            W = np.matmul(np.matmul(D12, W), D12)
 
+        column_sums = np.sum(W, axis=0)
+        if sum(column_sums > (1+0.05)) > 0: # sanity check (and application) for column-stochasticity of normalized matrix
+            print('Matrix is not column-stochastic. One or more columns have sums > 1+epsilon. Column-normalization performed.')
+            W = W / column_sums
+            
         with open(matrix_pickle_file_name, 'wb') as f:
             pickle.dump(W, f)
 
         print('\nMatrix normalization done. Pickle dumped.')
-            
+        
     print(datetime.datetime.now())
     return W
 
 ## Helper functions to evaluation
 
-# sorts a structured numpy array (called list in this script) based on values in column colname 
+# sorts a structured numpy array (called list in this script) based on values in column colname
 def sort_structured_array(input_array, colname='score', decreasing=True):
     sorted_order = np.argsort(input_array[colname])
     
@@ -183,3 +184,19 @@ def sort_structured_array(input_array, colname='score', decreasing=True):
         sorted_order = np.flip(sorted_order)
         
     return input_array[sorted_order]
+
+# sets second ranked list as reference (with its ordered items ascending as 0...N, then
+#  maps the first ranked list based on these 0..N indices of the second; used in tau, manhattan distanc, etc.
+def rank_ranked_lists_relatively(input_list1, input_list2):
+    map1 = {}
+    for i in range(input_list1.shape[0]):
+        map1[input_list1[i]] = i
+        
+    # loop over the second list and build vector to calculate euclidean space
+    ranks1 = np.zeros((input_list1.shape[0], ))
+    ranks2 = np.zeros((input_list2.shape[0], ))
+    for i in range(input_list1.shape[0]):
+        ranks2[i] = i
+        ranks1[i] = map1[input_list2[i]] # rank of gene being iterated over in second list, in the first (gold standard) list as saved in the dictionary
+
+    return ranks1, ranks2
