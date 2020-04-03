@@ -22,7 +22,7 @@ custom_processing_steps <- function(ppi_net, network_name){
 network_index <- 2 # 1 for HumanNet, 2 for STRING, etc.
 
 network_names <- c('HumanNetv2', 'STRING')
-network_files <- paste('../', c('HumanNetv2-FunctionalGeneNetwork_[FN].tsv', 'STRING_9606.protein.links.v11.0.txt'), sep='')
+network_files <- paste('../', c('HumanNetv2-FunctionalGeneNetwork_[FN]_top_10perc_edges.tsv', 'STRING_9606.protein.links.notextmining.nodatabase.edgescore.800upwards.v11.0.txt'), sep='')
 network_header <- c(F, T)
 network_sep <- c('\t', ' ')
 network_nodename_types <- c('entrezgene_id', 'ensembl_peptide_id')
@@ -45,7 +45,8 @@ print(length(node_names_all))
 # convert gene/protein names to gene symbols using bioMart
 # Helpful link: https://www.bioconductor.org/packages/devel/bioc/vignettes/biomaRt/inst/doc/biomaRt.html#selecting-a-biomart-database-and-dataset
 library(biomaRt)
-ensembl = useMart(biomart="ENSEMBL_MART_ENSEMBL")
+#ensembl = useMart(biomart="ENSEMBL_MART_ENSEMBL")
+ensembl <- useEnsembl(biomart = "ENSEMBL_MART_ENSEMBL", mirror = "useast")
 ensembl_hsgenes <- useDataset('hsapiens_gene_ensembl', mart=ensembl)
 
 # list available attributes in the Mart
@@ -66,6 +67,7 @@ library(plyr)
 
 ppi_net[, 1] <- mapvalues(ppi_net[, 1], from=genes.with.id[, 1], to=genes.with.id[, 2])
 ppi_net[, 2] <- mapvalues(ppi_net[, 2], from=genes.with.id[, 1], to=genes.with.id[, 2])
+ppi_net[, 3] <- ppi_net[, 3] / max(ppi_net[, 3]) # 'normalize' by division by max
 
 print("Number of nodes after ID coversion:")
 print(length(unique(union(ppi_net[, 1], ppi_net[, 2]))))
