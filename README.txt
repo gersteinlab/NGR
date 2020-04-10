@@ -20,19 +20,9 @@ Differential expression analysis results are in code/results/
 
 For data download, annotation (using ANNOVAR), and feature extraction in somatic and germline TCGA variants, see tcga/cortex_data/variant_data/README.txt
 
-PPI ID conversion:
-To generate the PPI file with IDs converted to gene symbols, run convert_ppi_IDs.Rmd in ppi/code/
+For PPI ID conversion, processing, and convesion to matrices, see ppi/README.txt
 
-PPI filtering w.r.t. edge quality:
-To retain high confidence interactions (i.e. confidence_score>700) in STRING, run the following commands locally in ppi/code:
-mv STRING_converted.txt STRING_converted_all.txt
-awk '{if($3>700 && $1 >= $2){print}}' STRING_converted_all.txt > STRING_converted.txt
-
-HumanNetv2 file is generated and kept as is, no need for other commands.
-
-Move filtered, converted PPI networks to results by running mv *converted* results/ in ppi/code
-
-PPI metric (e.g. centrality) generation:
+(Optional) PPI metric (e.g. centrality) generation:
 To generate betweenness centrality results, run (full commands in NGR Board sheet) ppi_centrality_script.sh in ppi/code
 Betweenness centrality results are in ppi/code/results
 

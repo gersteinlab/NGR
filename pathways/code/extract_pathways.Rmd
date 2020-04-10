@@ -14,7 +14,7 @@ source('../../base/plotting.R')
 
 ```{r}
 species="hsapiens"
-pathwaydb <- "reactome" #"biocarta" #"nci" #"kegg" 
+pathwaydb <- "kegg" #"reactome" #"biocarta" #"nci" #"kegg" 
 pathways <- GetData(species, pathwaydb)
 
 # get genes in all pathways + save in file
@@ -50,8 +50,8 @@ gene_symbols <- sort(gene_symbols)
 pathway_gene_df <- as.data.frame(matrix(rep(0, length(pathway_ALLGENE)*length(gene_symbols)), 
                                         nrow=length(pathway_ALLGENE)))
 
-rownames(pathway_gene_df) <- names(pathway_ALLGENE)
-colnames(pathway_gene_df) <- gene_symbols
+rownames(pathway_gene_df) <- gsub(' ', '_', names(pathway_ALLGENE))
+colnames(pathway_gene_df) <- gsub(' ', '_', gene_symbols)
 
 for(p in 1:length(pathway_ALLGENE)){
   member_genes <- which(gene_symbols %in% unlist(pathway_ALLGENE[p]))
@@ -144,7 +144,7 @@ print(sparsity)
 
 ```{r}
 # draw a heatmap of pathway-pathway intersections
-#pathway_pathway_df.m <- pathway_pathway_df
+pathway_pathway_df.m <- pathway_pathway_df
 for(i in 1:nrow(pathway_pathway_df.m)) # remove diagonals for visualization purposes (to remove high outlying values in diagonal)
   pathway_pathway_df.m[i, i] <- 0
 
