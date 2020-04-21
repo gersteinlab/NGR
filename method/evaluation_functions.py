@@ -1,7 +1,9 @@
 import numpy as np
 import scipy.stats as st
 from scipy.spatial import distance
-
+from sklearn.metrics import roc_auc_score
+from scipy.stats import hypergeom
+import sys
 import helper_functions as hp
 
 # initial_scores is a structured array with two columns: 'gene' and 'score'
@@ -9,23 +11,22 @@ import helper_functions as hp
 # gold_standard_file referes to csv file with two columns: 'gene' and 'score'
 # N is the number of genes to be compared across lists
 # comparison measure options: euclidean (Euclidean distance between individual genes w.r.t. gold standard)
-def evaluate_results(ranked_lists, gold_standard_file, list_names, N, comp_measures=('AO'), id_colname='gene', value_colname='score'):
+def evaluate_results(ranked_score_lists, gold_standard_file, list_names, N, comp_measures=('AO'), id_colname='gene', value_colname='score'):
     header = ''.ljust(20)
     for cm in comp_measures:
         header += '{0: <15}'.format(cm)
     print(header, end='')
-    
-    #  read gold standard structured array
-    gold_standard_list = np.genfromtxt(gold_standard_file, dtype='U25,f8', names=('gene', 'score'), skip_header=1, delimiter=',')
 
     # evaluate each of the ranked lists against the gold standard
-    for l in range(len(list_names)):        
-        common_ids, gold_standard_inds, ranked_list_inds = np.intersect1d(gold_standard_list[id_colname], ranked_lists[l][id_colname], return_indices=True)
-        common_ids = common_ids[0:N]; gold_standard_inds = gold_standard_inds[0:N]; ranked_list_inds = ranked_list_inds[0:N]
+    for l in range(len(list_names)):
+        gold_standard_scores = np.genfromtxt(gold_standard_file, dtype='U25,f8', names=('gene', 'score'), skip_header=1, delimiter=',')
 
-        # sort lists w.r.t. score_colname
-        ranked_list = hp.sort_structured_array(ranked_lists[l][ranked_list_inds], decreasing=True)[0:N]
-        gold_standard_list = hp.sort_structured_array(gold_standard_list[gold_standard_inds], decreasing=True)[0:N]
+        # select N common genes from both lists        
+        common_ids_all, gold_standard_inds_all, ranked_score_inds_all = np.intersect1d(gold_standard_scores[id_colname], ranked_score_lists[l][id_colname], return_indices=True)
+        common_ids = common_ids_all[0:N]; gold_standard_inds = gold_standard_inds_all[0:N]; ranked_score_inds = ranked_score_inds_all[0:N]
+
+        gold_standard_scores =  np.flip(np.sort(gold_standard_scores[gold_standard_inds], order='score'))
+        ranked_scores = np.flip(np.sort(ranked_score_lists[l][ranked_score_inds], order='score'))
 
         print('\n{0: <20}'.format(list_names[l]), end="")
         for cm in comp_measures:
@@ -34,18 +35,48 @@ def evaluate_results(ranked_lists, gold_standard_file, list_names, N, comp_measu
                 if 'manhattan' in cm:
                     dist_measure = 'manhattan_dist' 
     
-                score = distance_measure(ranked_list[id_colname], gold_standard_list[id_colname], measure=dist_measure)
-                score /= ranked_list.shape[0] # normalize distance
+                score = distance_measure(ranked_scores[id_colname], gold_standard_scores[id_colname], measure=dist_measure)
+                score /= ranked_scores.shape[0] # normalize distance
             elif cm == 'RBO':
-                score = RBO(ranked_list[id_colname], gold_standard_list[id_colname])
+                score = RBO(ranked_scores[id_colname], gold_standard_scores[id_colname])
             elif cm == 'AO':
-                score = AO(ranked_list[id_colname], gold_standard_list[id_colname], depth=ranked_list.shape[0])
+                score = AO(ranked_scores[id_colname], gold_standard_scores[id_colname], depth=ranked_scores.shape[0])
             elif 'tau' in cm:
                 if 'weighted' in cm:
-                    score, _ = weighted_tau(ranked_list[id_colname], gold_standard_list[id_colname])
+                    score, _ = weighted_tau(ranked_scores[id_colname], gold_standard_scores[id_colname])
                 else:
-                    score, _ = tau(ranked_list[id_colname], gold_standard_list[id_colname])
+                    score, _ = tau(ranked_scores[id_colname], gold_standard_scores[id_colname])
+            elif cm == 'AUC':
+                rank_threshold = 500 # label 1 for ranks above threshold; 0 otherwise
+                gold_standard_labels = np.concatenate((np.ones(rank_threshold), np.zeros(N-rank_threshold)))
+                
+                # ngr labels reordered so labels match and AUC is measured
+                ngr_labels = np.concatenate((np.ones(rank_threshold), np.zeros(N-rank_threshold)))
+                gold_standard_order, _ = hp.rank_ranked_lists_relatively(ranked_scores['gene'], gold_standard_scores['gene'])
+                ngr_labels = ngr_labels[gold_standard_order]
+
+                score = roc_auc_score(gold_standard_labels, ngr_labels)
+            elif cm == 'Hypergeomtric_test': # hypergeometric enrichment test
+                known_genes_file = '../gene_lists/known_genes/COSMIC_v90_membership.csv'
+                
+                known_genes = np.genfromtxt(known_genes_file, delimiter=',', skip_header=1, dtype='U25,i4', names=('gene','score'))
+                sample_common_known_genes = np.intersect1d(known_genes['gene'], ranked_scores[id_colname])
+                x = len(sample_common_known_genes) # number of "successes" in the sample of size N
             
+                # entire list, i.e. 'population'
+                ranked_scores = np.flip(np.sort(ranked_score_lists[l], order='score'))
+                population_common_known_genes = np.intersect1d(known_genes['gene'], ranked_scores[id_colname])
+                
+                n = len(population_common_known_genes) # number of "successes" in entire population
+                M = len(common_ids_all) # population size (list of all genes originally intersecting with gold standard; before selection of N genes above)
+                
+                pval = hypergeom.sf(x-1, M, n, N)
+                score = 0
+                if pval < 0.05:
+                    score = 1
+
+                #print('{0}, {1}, {2}, {3}. P-val: {4}'.format(M, n, N, x, pval))
+                
             score = round(score, 3)
             print('{0: <15}'.format(score), end="")
 
@@ -55,7 +86,7 @@ def evaluate_results(ranked_lists, gold_standard_file, list_names, N, comp_measu
 
 # calculates Eucliden or Manhattan distance between ranks of elements in two ordered lists
 def distance_measure(input_list1, input_list2, measure='manhattan_dist'):
-    ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)
+    ranks1, ranks2 = hp.rank_ranked_score_lists_relatively(input_list1, input_list2)
 
     if 'manhattan' in measure:
         distance_value = np.sum(abs(ranks1 - ranks2))
@@ -158,11 +189,11 @@ def RBO(input_list1, input_list2, p = 0.98):
 # A wrapper function for weighted Kendall tau measure 
 # See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.weightedtau.html
 def weighted_tau(input_list1, input_list2):
-    ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)
+    ranks1, ranks2 = hp.rank_ranked_score_lists_relatively(input_list1, input_list2)
     return st.weightedtau(ranks2, ranks1, rank=False)
 
 # A wrapper function for Kendall tau measure
 # See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kendalltau.html
 def tau(input_list1, input_list2):
-    ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)
+    ranks1, ranks2 = hp.rank_ranked_score_lists_relatively(input_list1, input_list2)
     return st.kendalltau(ranks2, ranks1)

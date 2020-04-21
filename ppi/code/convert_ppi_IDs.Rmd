@@ -19,13 +19,13 @@ custom_processing_steps <- function(ppi_net, network_name){
 ```
 
 ```{r}
-network_index <- 2 # 1 for HumanNet, 2 for STRING, etc.
+network_index <- 3 # 1 for HumanNet, 2 for STRING, etc.
 
-network_names <- c('HumanNetv2', 'STRING')
-network_files <- paste('../', c('HumanNetv2-FunctionalGeneNetwork_[FN]_top_10perc_edges.tsv', 'STRING_9606.protein.links.notextmining.nodatabase.edgescore.800upwards.v11.0.txt'), sep='')
-network_header <- c(F, T)
-network_sep <- c('\t', ' ')
-network_nodename_types <- c('entrezgene_id', 'ensembl_peptide_id')
+network_names <- c('HumanNetv2', 'STRING', 'HuRI')
+network_files <- paste('../', c('HumanNetv2-FunctionalGeneNetwork_[FN]_top_10perc_edges.tsv', 'STRING_9606.protein.links.notextmining.nodatabase.edgescore.800upwards.v11.0.txt', 'HuRI.tsv'), sep='')
+network_header <- c(F, T, F)
+network_sep <- c('\t', ' ', '\t')
+network_nodename_types <- c('entrezgene_id', 'ensembl_peptide_id', 'ensembl_gene_id')
 
 # read network
 ppi_net <- read.table(network_files[network_index], sep=network_sep[network_index], header=network_header[network_index], )
@@ -45,8 +45,8 @@ print(length(node_names_all))
 # convert gene/protein names to gene symbols using bioMart
 # Helpful link: https://www.bioconductor.org/packages/devel/bioc/vignettes/biomaRt/inst/doc/biomaRt.html#selecting-a-biomart-database-and-dataset
 library(biomaRt)
-#ensembl = useMart(biomart="ENSEMBL_MART_ENSEMBL")
-ensembl <- useEnsembl(biomart = "ENSEMBL_MART_ENSEMBL", mirror = "useast")
+ensembl = useMart(biomart="ENSEMBL_MART_ENSEMBL")
+#ensembl <- useEnsembl(biomart = "ENSEMBL_MART_ENSEMBL", mirror = "useast")
 ensembl_hsgenes <- useDataset('hsapiens_gene_ensembl', mart=ensembl)
 
 # list available attributes in the Mart

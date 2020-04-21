@@ -1,0 +1,5 @@
+awk '{print $1 " " $2 " 0.5"}' temp.txt # within complex
+
+awk 'BEGIN{sources="NCOR1,NCOR2,SPEN,KDM5A"; split(sources, genes, ","); interaction="inhibition"; interaction_value = 1; if(interaction=="inhibition"){interaction_value = interaction_value * -1}} {for(i=1; i<=length(genes); i++){print  genes[i] " " $1 " " interaction_value}}' temp.txt # source genes going towards a complex
+
+awk 'BEGIN{destinations="HEY1,HEY2,HEYL"; split(destinations, genes, ","); interaction="activation"; interaction_value = 1; if(interaction=="inhibition"){interaction_value = interaction_value * -1}} {for(i=1; i<=length(genes); i++){print  $1 " " genes[i] " " interaction_value}}' temp.txt # complex going towards destination genes

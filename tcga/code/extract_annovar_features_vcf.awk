@@ -47,37 +47,38 @@ function print_dict_results(feature_dict, feature_name){
 }
 
 # checks if the TCGA barcodes correspond to samples of the given cancer type
-function check_data_point(data_point, variant_type, cancer_type_barcodes){
-	if(cancer_type == "") # pancancer case; include all variants
-		return 1
+function check_data_point(data_point, variant_type, cancer_type_barcodes, data_point_functional_reference){
+	if((data_point_functional_reference ~ "exonic" || data_point_functional_reference ~ "splicing") && !(data_point_functional_reference ~ "nc")){ # choose coding exonic and splicing variants only		
+		if(variant_type == "germline"){ # last columns in germline annotations are formatted differently from somatic ones
+			for(i=NF; i>0; i--){
+				if($i ~ "TCGA"){
+					split($i, feature_vals, ":")
+					TCGA_barcode_prefix = substr(feature_vals[length(feature_vals)], 1, 12)
+					TCGA_sample_type = substr(feature_vals[length(feature_vals)], 14, 2) # sample types: [0-9]: tumor types, [10-19] normal types, [20+] control types
 
-	if(variant_type == "germline"){ # last columns in germline annotations are formatted differently from somatic ones
-		for(i=NF; i>0; i--){
-			if($i ~ "TCGA"){
-				split($i, feature_vals, ":")
-				TCGA_barcode_prefix = substr(feature_vals[length(feature_vals)], 1, 12)
-
-				if(cancer_type_barcodes ~ TCGA_barcode_prefix)
-					return 1
-
-			} else{
-				break
-			}
-		}
-	} else{
-		split(data_point, feature_vals, "=")
-		for(j=12; j<=length(feature_vals); j++){ # TCGA barcodes start at index 12
-			if(feature_vals[j] ~ "TCGA-"){
-				TCGA_barcode_prefix = substr(feature_vals[j], 1, 12) # unique identifier prefix of a sample in a TCGA barcode
-
-				if(cancer_type_barcodes ~ TCGA_barcode_prefix)
-					return 1
-			} else{
-				break
-			}
-		}
-	}
+					if((cancer_type == "" || (cancer_type != "" && cancer_type_barcodes ~ TCGA_barcode_prefix)) && (int(TCGA_sample_type) > 9 && int(TCGA_sample_type) < 15)) # 'normal' samples
+						return 1
 	
+				} else{
+					break
+				}
+			}
+		} else{
+			split(data_point, feature_vals, "=")
+			for(j=12; j<=length(feature_vals); j++){ # TCGA barcodes start at index 12
+				if(feature_vals[j] ~ "TCGA-"){
+					TCGA_barcode_prefix = substr(feature_vals[j], 1, 12) # unique identifier prefix of a sample in a TCGA barcode
+					TCGA_sample_type = substr(feature_vals[j], 14, 2) # sample types: [0-9]: tumor types, [10-19] normal types, [20+] control types
+	
+					if((cancer_type == "" || (cancer_type != "" && cancer_type_barcodes ~ TCGA_barcode_prefix)) && int(TCGA_sample_type) < 10) # tumor samples
+						return 1
+				} else{
+					break
+				}
+			}
+		}
+	} 
+		
 	return 0
 }
 
@@ -93,22 +94,23 @@ BEGIN{
 		if(sample_cancer_type == cancer_type)
 			cancer_type_barcodes = cancer_type_barcodes sample_barcode "-"
 	} else if(NR > 1 && index($1, "#") != 1){ # annotated file
-		include_data_point = check_data_point($10, variant_type, cancer_type_barcodes) # check if data point corresponds to cancer type under study
-
-		if(include_data_point == 1){
-			# split features in annovar annotations
-			split($8, features, ";");
+		# split features in annovar annotations
+		split($8, features, ";");
 			
-			annovar_start_index = 2 # in somatic files, annovar_start_index is fixed = 2
-			if(variant_type == "germline"){ # in germline, it varies
-				for(i=1; i<=length(features); i++){
-					if(features[i] ~ "ANNOVAR_DATE"){
-						annovar_start_index=i
-						break
-					}
+		annovar_start_index = 2 # in somatic files, annovar_start_index is fixed = 2
+		if(variant_type == "germline"){ # in germline, it varies
+			for(i=1; i<=length(features); i++){
+				if(features[i] ~ "ANNOVAR_DATE"){
+					annovar_start_index=i
+					break
 				}
 			}
-			
+		}
+		
+		data_point_functional_reference = substr(features[annovar_start_index+1], 14, length(features[annovar_start_index+1])) # used to select specific functional references (ANNOVAR's Func.refGene) only (e.g. exonic, splicing, etc.)
+		include_data_point = check_data_point($10, variant_type, cancer_type_barcodes, data_point_functional_reference) # check if data point corresponds to cancer type under study
+		
+		if(include_data_point == 1){
 			# some genes values are composite; split them
 			genes_str = extract_feature_value(features[annovar_start_index+2])
 			split(genes_str, gene_names, "\\\\x3b")

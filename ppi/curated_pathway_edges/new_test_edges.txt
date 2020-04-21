@@ -1,0 +1,4 @@
+# test-Pathway
+A E 1
+
+E B -1

@@ -16,6 +16,8 @@ awk -v file_prefix="HumanNetv2_converted" -f convert_ppi_network_to_matrix.awk r
 echo "Working on HPRD network..."
 awk -v file_prefix="HPRD_converted" -f convert_ppi_network_to_matrix.awk results/HPRD_converted.txt
 date
+awk -v file_prefix="HuRI_converted" -f convert_ppi_network_to_matrix.awk results/HuRI_converted.txt
+date
 
 mv *matrix*.txt results/
 
