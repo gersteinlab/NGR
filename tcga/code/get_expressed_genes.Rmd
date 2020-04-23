@@ -1,0 +1,30 @@
+---
+title: 'get_expressed_genes.Rmd'
+author: 'Hussein Mohsen'
+date: '4/23/2020'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+cancer_types <- c('blca', 'brca', 'cesc', 'chol', 'coad', 'esca', 'hnsc', 'kich', 'kirc', 'kirp', 'lihc', 'luad', 'lusc', 'prad', 'read', 'stad', 'thca', 'ucec')
+input_dir <- '../expression_data/'; output_dir <- 'results/expressed_genes/'
+  
+for (ct in cancer_types){
+  x_fpkm <- read.table(paste(input_dir, ct, '-rsem-fpkm-tcga-t.txt', sep=''), header=T, row.names=1)
+  x_fpkm <- x_fpkm[2:ncol(x_fpkm)]
+  expressed_genes <- names(which(sort(rowSums((x_fpkm > 15))) > (0.2 * ncol(x_fpkm)))) # genes with FPKM > 15 in >20% of samples
+  hist(rowSums((x_fpkm > 15)), breaks=150, main='', xlab='Number of samples in which a gene has FPKM > 15', ylab='Number of genes')
+  write.table(expressed_genes, paste(output_dir, ct, '_expressed_genes.csv', sep=''), row.names=F, col.names=c('gene'), quote=F)
+  print (paste(ct, ' processed.'), sep='')
+}
+```
