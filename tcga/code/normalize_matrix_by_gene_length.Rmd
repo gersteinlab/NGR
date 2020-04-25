@@ -1,0 +1,67 @@
+---
+title: "normalize_matrix_by_gene_length.Rmd"
+author: "Hussein Mohsen"
+date: "4/24/2020"
+output: html_document
+---
+
+```{r}
+matrix_dir = '../cortex_data/variant_data/annovar/results/matrix_results/'
+gene_lenghts_file = 'GRCh37_bioMart_bioConductor_package_all_121819.txt'
+
+gene_lengths <- read.table(gene_lenghts_file, stringsAsFactors=F, header=T, sep='\t')
+gene_lengths <- aggregate(gene_lengths$length, by=list(gene_lengths$external_gene_name), FUN=mean) # average length of genes with duplicate records
+colnames(gene_lengths) <- c('gene', 'length')
+```
+
+```{r}
+# discretize matrix (raw values of 1 remains as is; raw values v > 1: (a) normalized v < normalized 50th percentile -> 1 (b) 50th percentile < normalized v <= 75th percentile -> 2; 75th percentile < normalized v <= 90th percentile -> 3; 90th percentile < normalized v -> 4)
+transform_vector_values <- function(matrix, normalized_matrix){
+  qs <- c(0, quantile(normalized_matrix[normalized_matrix != 0], c(0.5, 0.7, 0.9)), max(normalized_matrix))
+  m <- as.data.frame(apply(normalized_matrix, 2, .bincode, qs))
+  m[matrix < 2] <- matrix[matrix < 2] # 0 and 1 values in raw matrix remain unchanged
+
+  return(m)
+}
+```
+
+```{r}
+# Notes: matrix index needs to be sorted by gene name
+# Input matrix in this script is P (# patients) x N (# genes); on Farnam's NGR, its transpose is used N x P
+  
+# normalize genomics matrices by gene length
+cancer_types <- c('BRCA', 'LUSC', 'LUAD', 'ACC', 'CESC', 'CHOL', 'COAD', 'DLBC', 'ESCA', 'GBM', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LAML', 'LGG', 'LIHC', 'MESO', 'OV', 'PAAD', 'PRAD', 'PCPG', 'READ', 'SARC', 'SKCM', 'STAD', 'TGCT', 'THCA', 'THYM', 'UCEC', 'UCS', 'UVM')
+variant_type <- 'somatic_MC3' #'germline'
+  
+for(ct in cancer_types){
+  matrix <- read.table(paste(matrix_dir, variant_type, '_', ct, '_matrix.txt', sep=''), header=F)
+  matrix_gene_index <- read.table(paste(matrix_dir, variant_type, '_', ct, '_matrix_gene_index.csv', sep=''), stringsAsFactors=F, header=F)[,1]
+  colnames(matrix) <- matrix_gene_index
+  
+  ct_gene_lengths <- gene_lengths[which(gene_lengths$gene %in% matrix_gene_index), ]
+  ct_gene_lengths <- ct_gene_lengths[order(ct_gene_lengths$gene), ] # sort
+  ct_avg_gene_length <- mean(ct_gene_lengths$length) # to be used for genes with missing length values
+  
+  available_gene_indices <- which((matrix_gene_index %in% ct_gene_lengths$gene)) # gene for which length value is not available
+  missing_gene_indices <- which(!(matrix_gene_index %in% ct_gene_lengths$gene)) # gene for which length value is not available
+  
+  expanded_ct_gene_lengths <- rep(0, length(matrix_gene_index)) # expanded vector with values for all genes (available + avg length for missing-value genes)
+  expanded_ct_gene_lengths[available_gene_indices] <- ct_gene_lengths$length
+  expanded_ct_gene_lengths[missing_gene_indices] <- ct_avg_gene_length
+  
+  # sanity check; prints discordant genes if there's any error
+  # for(i in 1:length(expanded_ct_gene_lengths)){for(j in 1:nrow(ct_gene_lengths)){ if(names(expanded_ct_gene_lengths)[i] == ct_gene_lengths[j, 'gene'] && expanded_ct_gene_lengths[i] ==  ct_gene_lengths[j, 'length']){print(ct_gene_lengths[j, 'gene']) } }  }
+
+  normalized_matrix <- sweep(matrix, 2, expanded_ct_gene_lengths, `/`) # normalize by gene length
+  transformed_normalized_matrix <- transform_vector_values(matrix, normalized_matrix) # discretize
+
+  # write tables
+  write.table(transformed_normalized_matrix, paste(matrix_dir, variant_type, '_', ct, '_matrix_transformed.txt', sep=''), row.names=F, col.names=F, quote=F)
+  print(paste(ct, "processed."))
+}
+
+
+```
+
+
+
