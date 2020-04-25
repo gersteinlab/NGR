@@ -54,3 +54,6 @@ mv *results.csv annovar/results/matrix_results
 # transform matrices (normalization by gene length + discretization per 1-4 scale)
 Interactively on mac, run: tcga/code/normalize_matrix_by_gene_length.Rmd
 
+# generate lists of expressed genes in tumor samples of each tissue (to be used in building tissue-specific PPIs)
+Interactively on mac, tcga/code/get_expressed_genes.Rmd
+
