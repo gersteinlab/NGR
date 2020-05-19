@@ -1,42 +1,61 @@
 import numpy as np
 import scipy.stats as st
 from scipy.spatial import distance
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, precision_score, recall_score, precision_recall_curve, auc
 from scipy.stats import hypergeom
 import sys
 import helper_functions as hp
+from scipy.constants.codata import precision
 
 # initial_scores is a structured array with two columns: 'gene' and 'score'
 # result_genes and result_scores are 2-D structured arrays: lists of genes and resulting scores to be evaluated
 # gold_standard_file referes to csv file with two columns: 'gene' and 'score'
 # N is the number of genes to be compared across lists
 # comparison measure options: euclidean (Euclidean distance between individual genes w.r.t. gold standard)
-def evaluate_results(ranked_score_lists, gold_standard_file, list_names, N, comp_measures=('AO'), id_colname='gene', value_colname='score'):
+def evaluate_results(ranked_score_lists, gold_standard_file, list_names, cancer_type, variant_type, comp_measures=('AO'), id_colname='gene', value_colname='score'):
     header = ''.ljust(20)
     for cm in comp_measures:
-        header += '{0: <15}'.format(cm)
+        header += '{0: <20}'.format(cm)
     print(header, end='')
 
     # evaluate each of the ranked lists against the gold standard
     for l in range(len(list_names)):
         gold_standard_scores = np.genfromtxt(gold_standard_file, dtype='U25,f8', names=('gene', 'score'), skip_header=1, delimiter=',')
 
-        # select N common genes from both lists        
-        common_ids_all, gold_standard_inds_all, ranked_score_inds_all = np.intersect1d(gold_standard_scores[id_colname], ranked_score_lists[l][id_colname], return_indices=True)
-        common_ids = common_ids_all[0:N]; gold_standard_inds = gold_standard_inds_all[0:N]; ranked_score_inds = ranked_score_inds_all[0:N]
+        # retain expressed genes only in gold standrd list
+        if cancer_type != '':
+            cancer_type_expressed_genes_file = '../tcga/code/results/expressed_genes/'+cancer_type.lower()+'_expressed_genes.csv'
+            cancer_type_expressed_genes = np.loadtxt(cancer_type_expressed_genes_file, dtype='U25', skiprows=1)
+            
+            _, cancer_type_expressed_genes_inds, gold_standard_expressed_gene_inds = np.intersect1d(cancer_type_expressed_genes, gold_standard_scores[id_colname], return_indices=True)               
+            cancer_type_expressed_genes = cancer_type_expressed_genes[cancer_type_expressed_genes_inds]       
+            gold_standard_scores = gold_standard_scores[gold_standard_expressed_gene_inds]
 
-        gold_standard_scores =  np.flip(np.sort(gold_standard_scores[gold_standard_inds], order='score'))
+            # In case AUC of whole PPI is needed: comment second line re: cancer_type_expressed_genes = ...m, and uncomment 
+            # the block below to locate unexpressed PPI genes to the bottom of the gold standard list with 0 values
+
+            #unexpressed_ranked_genes = np.setdiff1d(ranked_score_lists[l][id_colname], cancer_type_expressed_genes)
+            #unexpressed_ranked_gene_scores = np.zeros(len(unexpressed_ranked_genes))
+            #unexpressed_ranked_genes_arr = np.array(list(zip(unexpressed_ranked_genes, unexpressed_ranked_gene_scores)), dtype=gold_standard_scores.dtype)
+            #gold_standard_scores = np.append(gold_standard_scores, unexpressed_ranked_genes_arr)
+            #gold_standard_scores = np.sort(gold_standard_scores, order='gene')
+
+        common_ids, gold_standard_inds, ranked_score_inds = np.intersect1d(gold_standard_scores[id_colname], ranked_score_lists[l][id_colname], return_indices=True)
+        N = len(common_ids) # number of post-processed genes
+        
+        # Re-sort lists in decreasing order of score
+        gold_standard_scores = np.flip(np.sort(gold_standard_scores[gold_standard_inds], order='score'))
         ranked_scores = np.flip(np.sort(ranked_score_lists[l][ranked_score_inds], order='score'))
 
         print('\n{0: <20}'.format(list_names[l]), end="")
-        for cm in comp_measures:
+        for cm in comp_measures:        
             if 'dist' in cm:
                 dist_measure = 'euclidean_dist'
                 if 'manhattan' in cm:
                     dist_measure = 'manhattan_dist' 
-    
+                
                 score = distance_measure(ranked_scores[id_colname], gold_standard_scores[id_colname], measure=dist_measure)
-                score /= ranked_scores.shape[0] # normalize distance
+                score /= (ranked_scores.shape[0]*ranked_scores.shape[0]) # normalize distance
             elif cm == 'RBO':
                 score = RBO(ranked_scores[id_colname], gold_standard_scores[id_colname])
             elif cm == 'AO':
@@ -46,39 +65,48 @@ def evaluate_results(ranked_score_lists, gold_standard_file, list_names, N, comp
                     score, _ = weighted_tau(ranked_scores[id_colname], gold_standard_scores[id_colname])
                 else:
                     score, _ = tau(ranked_scores[id_colname], gold_standard_scores[id_colname])
-            elif cm == 'AUC':
-                rank_threshold = 500 # label 1 for ranks above threshold; 0 otherwise
+            elif cm in ('F1', 'Accuracy', 'AUC'):
+                rank_threshold = int(0.1 * N) # label 1 for ranks above threshold; 0 otherwise
                 gold_standard_labels = np.concatenate((np.ones(rank_threshold), np.zeros(N-rank_threshold)))
                 
                 # ngr labels reordered so labels match and AUC is measured
                 ngr_labels = np.concatenate((np.ones(rank_threshold), np.zeros(N-rank_threshold)))
+
                 gold_standard_order, _ = hp.rank_ranked_lists_relatively(ranked_scores['gene'], gold_standard_scores['gene'])
                 ngr_labels = ngr_labels[gold_standard_order]
 
-                score = roc_auc_score(gold_standard_labels, ngr_labels)
-            elif cm == 'Hypergeomtric_test': # hypergeometric enrichment test
-                known_genes_file = '../gene_lists/known_genes/COSMIC_v90_membership.csv'
-                
+                if cm == 'F1':
+                    score = f1_score(gold_standard_labels, ngr_labels)
+                elif cm == 'Accuracy':
+                    score = accuracy_score(gold_standard_labels, ngr_labels)
+                elif cm == 'Precision':
+                    score = precision_score(gold_standard_labels, ngr_labels)
+                elif cm == 'AUC':                
+                    score = roc_auc_score(gold_standard_labels, ngr_labels)
+                elif cm == 'AUPRC':
+                    precision, recall, thresholds = precision_recall_curve(gold_standard_labels, ngr_labels)
+                    score = auc(recall, precision)
+            elif cm == 'Hypergeom_test': # hypergeometric enrichment test
+                known_genes_file = '../gene_lists/known_genes/COSMIC_v90_membership_'+cancer_type+'_'+variant_type+'.csv'
                 known_genes = np.genfromtxt(known_genes_file, delimiter=',', skip_header=1, dtype='U25,i4', names=('gene','score'))
-                sample_common_known_genes = np.intersect1d(known_genes['gene'], ranked_scores[id_colname])
+                
+                S = int(0.1 * N) # sample size
+                
+                sample_common_known_genes = np.intersect1d(known_genes['gene'], ranked_scores[id_colname][0:S])
                 x = len(sample_common_known_genes) # number of "successes" in the sample of size N
-            
-                # entire list, i.e. 'population'
-                ranked_scores = np.flip(np.sort(ranked_score_lists[l], order='score'))
+
                 population_common_known_genes = np.intersect1d(known_genes['gene'], ranked_scores[id_colname])
-                
                 n = len(population_common_known_genes) # number of "successes" in entire population
-                M = len(common_ids_all) # population size (list of all genes originally intersecting with gold standard; before selection of N genes above)
-                
-                pval = hypergeom.sf(x-1, M, n, N)
+
+                pval = hypergeom.sf(x-1, N, n, S)
                 score = 0
                 if pval < 0.05:
                     score = 1
 
-                #print('{0}, {1}, {2}, {3}. P-val: {4}'.format(M, n, N, x, pval))
+                #print('{0}, {1}, {2}, {3}. P-val: {4}'.format(N, n, S, x, pval))
                 
             score = round(score, 3)
-            print('{0: <15}'.format(score), end="")
+            print('{0: <20}'.format(score), end="")
 
 # EVALUATION FUNCTIONS:
 # All evaluation functions below assume lists are sorted in decreasing order; each input list is 1-D (i.e. a column from the structured array used in evaluate_results() above
@@ -86,7 +114,7 @@ def evaluate_results(ranked_score_lists, gold_standard_file, list_names, N, comp
 
 # calculates Eucliden or Manhattan distance between ranks of elements in two ordered lists
 def distance_measure(input_list1, input_list2, measure='manhattan_dist'):
-    ranks1, ranks2 = hp.rank_ranked_score_lists_relatively(input_list1, input_list2)
+    ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)
 
     if 'manhattan' in measure:
         distance_value = np.sum(abs(ranks1 - ranks2))
@@ -189,11 +217,11 @@ def RBO(input_list1, input_list2, p = 0.98):
 # A wrapper function for weighted Kendall tau measure 
 # See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.weightedtau.html
 def weighted_tau(input_list1, input_list2):
-    ranks1, ranks2 = hp.rank_ranked_score_lists_relatively(input_list1, input_list2)
+    ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)
     return st.weightedtau(ranks2, ranks1, rank=False)
 
 # A wrapper function for Kendall tau measure
 # See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kendalltau.html
 def tau(input_list1, input_list2):
-    ranks1, ranks2 = hp.rank_ranked_score_lists_relatively(input_list1, input_list2)
+    ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)
     return st.kendalltau(ranks2, ranks1)

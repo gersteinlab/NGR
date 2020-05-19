@@ -34,20 +34,20 @@ def totality_scale(values):
 # reads input matrix and its (row and col) indices
 # In matrix file: rows correpond to samples, cols to genes; We transpose in NGR's numpy frame (note the .T below),
 # where rows end up representing (N) genes and cols (P) sample vectors. 
-def read_matrix(file_name_prefix, sorted=True, target='both', selected_entities={'rows':[], 'cols':[]}):
+def read_matrix(file_name_prefix, index_files_name_prefix, sorted=True, target='both', selected_entities={'rows':[], 'cols':[]}):
     matrix_pickle_file_name = file_name_prefix+'.pkl'
-    matrix_pickle_row_index_file_name = file_name_prefix+'_gene_index.pkl'
-    matrix_pickle_col_index_file_name = file_name_prefix+'_barcode_index.pkl'
+    matrix_pickle_row_index_file_name = index_files_name_prefix+'_gene_index.pkl'
+    matrix_pickle_col_index_file_name = index_files_name_prefix+'_barcode_index.pkl'
 
     if path.exists(matrix_pickle_file_name) and path.exists(matrix_pickle_row_index_file_name) and path.exists(matrix_pickle_col_index_file_name):
         matrix = pickle.load(open(matrix_pickle_file_name, 'rb'))
         matrix_row_index = pickle.load(open(matrix_pickle_row_index_file_name, 'rb'))
         matrix_col_index = pickle.load(open(matrix_pickle_col_index_file_name, 'rb'))
-        print('\nMatrix and indices reading done. Existing pickles loaded.')
+        print('\nMatrix and indices reading done. Existing pickles loaded from {0} (+ row and col indices pickle files).'.format(matrix_pickle_file_name))
     else:
         matrix_file_name = file_name_prefix+'.txt'
-        matrix_row_index_file_name = file_name_prefix+'_gene_index.csv'
-        matrix_col_index_file_name = file_name_prefix+'_barcode_index.csv'
+        matrix_row_index_file_name = index_files_name_prefix+'_gene_index.csv'
+        matrix_col_index_file_name = index_files_name_prefix+'_barcode_index.csv'
         
         matrix = np.loadtxt(matrix_file_name, dtype='f').T # pickle matrix
         matrix_row_index = np.loadtxt(matrix_row_index_file_name, dtype='U25') # pickle matrix index
@@ -65,7 +65,7 @@ def read_matrix(file_name_prefix, sorted=True, target='both', selected_entities=
         pickle.dump(matrix, open(matrix_pickle_file_name, 'wb'))
         pickle.dump(matrix_row_index, open(matrix_pickle_row_index_file_name, 'wb'))
         pickle.dump(matrix_col_index, open(matrix_pickle_col_index_file_name, 'wb'))    
-        print('\nMatrix and indices reading done. Pickles saved.')
+        print('\nMatrix and indices reading done. Pickles saved at {0} (+ its indices files).'.format(matrix_pickle_file_name))
     
     print('{0}\n'.format(datetime.datetime.now()))
     return matrix, matrix_row_index, matrix_col_index
@@ -115,42 +115,48 @@ def select_from_matrix(input_matrix, input_matrix_row_index, input_matrix_col_in
     return matrix, matrix_row_index, matrix_col_index
 
 # reads NxN ppi matrix and its index
-def read_square_matrix(file_name_prefix, sorted=True, largest_cc=True, selected_entities=[]):
-    matrix_pickle_file_name = file_name_prefix+'.pkl'
-    matrix_pickle_index_file_name = file_name_prefix+'_index.pkl'
+def read_square_matrix(file_name_prefix, ppi_cancer_type='', largest_cc=True, sorted=True, selected_entities=[]):
+    extended_file_name_prefix = file_name_prefix
+    
     if largest_cc:
-        matrix_pickle_file_name = file_name_prefix+'_lcc.pkl'
-        matrix_pickle_index_file_name = file_name_prefix+'_lcc_index.pkl'
+        extended_file_name_prefix = extended_file_name_prefix+'_lcc'
 
+    if ppi_cancer_type != '':
+        extended_file_name_prefix = extended_file_name_prefix + ('_' + ppi_cancer_type.lower())
+    
+    matrix_pickle_file_name = extended_file_name_prefix + '.pkl'
+    matrix_pickle_index_file_name = extended_file_name_prefix+'_index.pkl'
+    
     if path.exists(matrix_pickle_file_name) and path.exists(matrix_pickle_index_file_name):
         matrix = pickle.load(open(matrix_pickle_file_name, 'rb'))
         matrix_index = pickle.load(open(matrix_pickle_index_file_name, 'rb'))
-        print('\nSquare matrix and index reading done. Existing pickles loaded.')
+        print('\nSquare matrix and index reading done. Existing pickles loaded from {0} (+ its index file).'.format(matrix_pickle_file_name))
     else:
         matrix_file_name = file_name_prefix+'.txt'
         matrix_index_file_name = file_name_prefix+'_index.txt'
         
-        matrix = np.loadtxt(matrix_file_name, dtype='f') # pickle matrix
-        matrix_index = np.loadtxt(matrix_index_file_name, dtype='U25') # pickle matrix index
-        
-        if largest_cc:
-            matrix, matrix_index = get_largest_connected_component(matrix, matrix_index)
-        
-        if sorted:
-            matrix, matrix_index = sort_square_matrix(matrix, matrix_index)
+        matrix = np.loadtxt(matrix_file_name, dtype='f')
+        matrix_index = np.loadtxt(matrix_index_file_name, dtype='U25')
         
         if (len(selected_entities) > 0):
             if sorted:
                 matrix, matrix_index = select_from_square_matrix(matrix, matrix_index, selected_entities)
+                print('Genes selected from matrix.')
             else:
                 raise Exception('Warning: Square matrix index not sorted. Cannot select entities.'.format(target))
+                
+        if largest_cc:
+            matrix, matrix_index = get_largest_connected_component(matrix, matrix_index)
+            
+        if sorted:
+            matrix, matrix_index = sort_square_matrix(matrix, matrix_index)
 
         pickle.dump(matrix, open(matrix_pickle_file_name, 'wb'))
         pickle.dump(matrix_index, open(matrix_pickle_index_file_name, 'wb'))
-        print('\nSquare matrix and index reading done. Pickles saved.')
+        print('\nSquare matrix and index reading done. Pickles saved at {0} (+ its index pickle file).'.format(matrix_pickle_file_name))
     
     print('{0}\n'.format(datetime.datetime.now()))
-    return matrix, matrix_index
+    return matrix, matrix_index, extended_file_name_prefix
     
 # sorts NxN matrix according to given index that represents both cols and rows
 def sort_square_matrix(input_matrix, input_matrix_index):
@@ -170,11 +176,10 @@ def select_from_square_matrix(input_matrix, input_matrix_index, selected_entitie
     matrix = input_matrix
     matrix_index = input_matrix_index
 
-    selected_indices = np.sort(selected_entities)
+    selected_entities = np.sort(selected_entities)
     common_entities = np.intersect1d(matrix_index, selected_entities)
     common_entities_in_matrix_index = np.searchsorted(matrix_index, common_entities) # indices of common entities in the matrix
-    print(common_entities_in_matrix_index)
-    
+
     matrix = matrix[:, common_entities_in_matrix_index] # reorder matrix rows and cols
     matrix = matrix[common_entities_in_matrix_index, :]
 
@@ -238,23 +243,34 @@ def get_largest_connected_component(matrix, matrix_index):
     
     return matrix, matrix_index # return largest connected component (indices of its vertices)
     
-def get_ngr_inputs(genomics_matrix_file_prefix, ppi_matrix_file_prefix, sorted=True, largest_cc=True, matrix_normalization_method='insulated_diffusion'):
-    ppi_matrix, ppi_matrix_index = read_square_matrix(ppi_matrix_file_prefix, sorted=sorted, largest_cc=largest_cc) # NxN
+def get_ngr_inputs(genomics_matrix_file_prefix, ppi_matrix_file_prefix, genomics_matrix_transformed=False, largest_cc=True, ppi_cancer_type='', sorted=True, matrix_normalization_method='insulated_diffusion'):
+
+    genomics_matrix_index_files_prefix = genomics_matrix_file_prefix
     
-    genomics_matrix, genomics_matrix_row_index, genomics_matrix_col_index = read_matrix(genomics_matrix_file_prefix, sorted=sorted, target='both') # N'xP, N' << N
+    cancer_type_expressed_genes = []
+    if ppi_cancer_type != '':
+        cancer_type_expressed_genes_file = '../tcga/code/results/expressed_genes/'+ppi_cancer_type.lower()+'_expressed_genes.csv'
+        cancer_type_expressed_genes = np.loadtxt(cancer_type_expressed_genes_file, dtype='U25', skiprows=1)
+        print('Expressed gene list for {0} loaded from {1}.'.format(ppi_cancer_type, cancer_type_expressed_genes_file))
+    
+    ppi_matrix, ppi_matrix_index, extended_ppi_matrix_file_prefix = read_square_matrix(ppi_matrix_file_prefix, ppi_cancer_type=ppi_cancer_type, largest_cc=largest_cc, sorted=sorted, selected_entities=cancer_type_expressed_genes) # NxN
+
+    if genomics_matrix_transformed:
+        genomics_matrix_file_prefix += '_transformed'
+        print('Transformed genomics matrix {0} selected.'.format(genomics_matrix_file_prefix))
+        
+    genomics_matrix, genomics_matrix_row_index, genomics_matrix_col_index = read_matrix(genomics_matrix_file_prefix, genomics_matrix_index_files_prefix, sorted=sorted, target='both') # N'xP, N' << N
     genomics_matrix, genomics_matrix_row_index = expand_genomics_matrix(ppi_matrix, ppi_matrix_index, genomics_matrix, genomics_matrix_row_index) # NxP
-    
+
     if matrix_normalization_method != 'none': # ppi normalization
-        if largest_cc:
-            ppi_matrix = normalize_matrix(ppi_matrix, ppi_matrix_file_prefix+'_lcc', normalization=matrix_normalization_method)
-        else:
-            ppi_matrix = normalize_matrix(ppi_matrix, ppi_matrix_file_prefix, normalization=matrix_normalization_method)
+        ppi_matrix = normalize_matrix(ppi_matrix, extended_ppi_matrix_file_prefix, normalization=matrix_normalization_method)
 
-    return ppi_matrix, ppi_matrix_index, genomics_matrix, genomics_matrix_row_index, genomics_matrix_col_index
+    return ppi_matrix, ppi_matrix_index, extended_ppi_matrix_file_prefix, genomics_matrix, genomics_matrix_row_index, genomics_matrix_col_index
 
-# expands the input genomics matrix to include all (and only) genes in the ppi; genes in genomics matrix
-# not in ppi are removed; genes in ppi not in matrix added with zero rows across patients to allow for diffusion
-# genomics matrix row index updated accordingly
+# expands/shrinks the input genomics matrix to include ONLY genes in the ppi; genes in genomics matrix
+# not in ppi are removed; genes in ppi not in matrix added to genomics matrix with zero rows across patients 
+# to allow for diffusion 
+# genomics matrix row index updated accordingly and returned
 def expand_genomics_matrix(ppi_matrix, ppi_matrix_index, genomics_matrix, genomics_matrix_row_index):
     common_entities = np.intersect1d(ppi_matrix_index, genomics_matrix_row_index)
     common_entities_indices_in_genomics_matrix_row_index = np.searchsorted(genomics_matrix_row_index, common_entities)
@@ -289,7 +305,7 @@ def process_ngr_results(ngr_score_matrix, ngr_genes, save_files=True, uid='', ou
 
 def normalize_matrix(W, file_name_prefix, normalization=''):
     # pickle file name
-    matrix_pickle_file_name = file_name_prefix+'_'+str(W.shape[0])+'_genes_normalized'
+    matrix_pickle_file_name = file_name_prefix+'_normalized'
     
     if len(normalization) == 0:
         print('\nMatrix normalization method not provided; default is personalized pageRank: W = D^-1/2 A D^-1/2')
@@ -301,7 +317,7 @@ def normalize_matrix(W, file_name_prefix, normalization=''):
 
     if path.exists(matrix_pickle_file_name):
         W = pickle.load(open(matrix_pickle_file_name, 'rb'))
-        print('\nNormalized matrix reading done. Existing pickle loaded.')
+        print('\nNormalized matrix reading done. Existing pickle loaded from {0}.'.format(matrix_pickle_file_name))
     else: # normalize matrix and dump the pickle
         D = np.diag(np.sum(W, axis=0)) # D is diagonal degree matrix
 
@@ -320,7 +336,7 @@ def normalize_matrix(W, file_name_prefix, normalization=''):
             #print('Column-normalization performed.')
         
         pickle.dump(W, open(matrix_pickle_file_name, 'wb'))
-        print('\nMatrix normalization done. Pickle dumped.')
+        print('\nMatrix normalization done. Pickle dumped at {0}.'.format(matrix_pickle_file_name))
 
     print(datetime.datetime.now())
     return W
@@ -341,7 +357,7 @@ def read_scores(file_name, sorted=True):
 
 # sets second ranked list as reference (with its ordered entities ascending as 0...N, then
 # maps the first ranked list based on these 0..N indices of the second; used in tau, manhattan distance, etc.
-def rank_ranked_lists_relatively(input_list1, input_list2):
+def rank_ranked_lists_relatively(input_list1, input_list2):    
     map1 = {}
     for i in range(input_list1.shape[0]):
         map1[input_list1[i]] = i
@@ -354,3 +370,22 @@ def rank_ranked_lists_relatively(input_list1, input_list2):
         ranks1[i] = map1[input_list2[i]] # rank of gene being iterated over in second list, in the first (gold standard) list as saved in the dictionary
 
     return ranks1, ranks2
+
+# finds genes in full_list but not in key_list, and the indices of these genes in full_list
+# can be used in evaluate_results to find the distribution of ranks of removed (unexpressed) genes from whole-PPIs
+# Both lists are NOT alphabetically sorted (as they are sorted by gene scores before being evaluated in the NGR framework)
+def find_removed_gene_indices(full_list, key_list):
+    diff_genes = np.setdiff1d(full_list, key_list)
+    print(diff_genes)
+    
+    diff_gene_indices = []
+    for dg in diff_genes:
+        for i in range(len(full_list)):
+            if full_list[i] == dg:
+                diff_gene_indices.append(i)
+                break
+    
+    print(np.mean(diff_gene_indices))
+    print(np.median(diff_gene_indices))
+    
+    return sorted(diff_gene_indices)
