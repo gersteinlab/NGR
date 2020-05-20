@@ -2,6 +2,8 @@ import numpy as np
 from scipy.special import softmax
 import networkx as nx 
 
+from collections import defaultdict
+
 import datetime
 import pickle
 import uuid
@@ -389,3 +391,25 @@ def find_removed_gene_indices(full_list, key_list):
     print(np.median(diff_gene_indices))
     
     return sorted(diff_gene_indices)
+
+# returns uid dict passed to generate_batch_gene_mobility_lists in evaluation
+def get_uids_dict(uids_filename):
+    uids = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
+    
+    f = open(uids_filename, 'r')
+    lines = f.readlines()
+    
+    for l in lines:
+        cols = l.rstrip().split(' ')
+        
+        variant_type = cols[0]
+        cancer_type = cols[1]
+        ppi_network = cols[2]
+        ppi_level = cols[3]
+        uid = cols[4]
+        
+        uids[variant_type][cancer_type][ppi_network][ppi_level] = uid
+
+    f.close()
+    
+    return uids

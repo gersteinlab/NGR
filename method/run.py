@@ -14,7 +14,7 @@ def main():
     uid = str(uuid.uuid4())[0:8] # unique id
     print('UID: ' +str(uid))
 
-    variant_type = 'somatic_MC3'; cancer_type = 'LUAD'; ppi_network='HuRI'; output_dir='results/'; output_filename_suffix = 'lcc_'+cancer_type.lower()    
+    variant_type = 'somatic_MC3'; cancer_type = 'LUAD'; ppi_network='HuRI'; output_dir='results/score_matrices/'; output_filename_suffix = 'lcc_'+cancer_type.lower()    
     ppi_matrix_prefix = '../ppi/code/results/'+ppi_network+'_converted_matrix'
     genomics_matrix_prefix = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'+variant_type+'_'+cancer_type+'_matrix'
       
@@ -37,4 +37,22 @@ def main():
     ngr_score_matrix = ngr.run(X=genomics_matrix, W=ppi_matrix)
     pickle.dump(ngr_score_matrix, open('_'.join([output_dir+variant_type, cancer_type, ppi_network, output_filename_suffix, uid, 'score_matrix.pkl']), 'wb'))
  
+    '''
+    ## generate removed gene indices lists (i.e. unexpressed ones in whole PPIs
+    # once all results are generated; modify code block accordingly to include both cancer type and ppi name
+
+    cancer_type_expressed_genes_file = '../tcga/code/results/expressed_genes/'+cancer_type.lower()+'_expressed_genes.csv'
+    cancer_type_expressed_genes = np.loadtxt(cancer_type_expressed_genes_file, dtype='U25', skiprows=1)
+    _, cancer_type_expressed_genes_inds, gold_standard_expressed_gene_inds = np.intersect1d(cancer_type_expressed_genes, gold_standard_scores[id_colname], return_indices=True)
+
+    # In case finding ranks of removed (unexpressed) genes is needed to compare whole vs tissue specific PPI results, uncomment block below; figure to be created using R
+    if(len(np.setdiff1d(ranked_score_lists[l][id_colname], cancer_type_expressed_genes)) > 0):
+        removed_gene_indices = hp.find_removed_gene_indices(ranked_score_lists[l][id_colname], cancer_type_expressed_genes)
+        removed_gene_indices_filename = 'results/removed_gene_indices/'+cancer_type.lower()+'_removed_gene_indices.csv'
+        with open(removed_gene_indices_filename, 'w') as filehandle:
+            for index in removed_gene_indices:
+                filehandle.write('%s\n' % index)
+                
+    '''
+
 main()

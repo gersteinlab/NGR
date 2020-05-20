@@ -1,21 +1,48 @@
 import helper_functions as hp
 import evaluation_functions as eval
 
-import numpy as np
-import pickle
+def main():
+    # Mobility List Batch Generation
+    uids_filename = 'results/score_matrices/uids.txt'
+    eval.generate_batch_gene_mobility_lists(uids_filename)
 
-## evaluate results
+main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''
+## Entire List Comparison
+
 # A. Whole PPI
 variant_type = 'somatic_MC3'; cancer_type = 'BRCA'; ppi_network='HumanNetv2';
-gold_standard_file = '../gene_lists/code/results/cancerMine_both_depmap_both_values_mean_scores_breast_tissue.csv'
+gold_standard_file = '../gene_lists/code/results/score_matrices/cancerMine_both_depmap_both_values_mean_scores_breast_tissue.csv'
 
 # load whole-ppi results
-uid = 'ab420746'; output_dir='results/lcc_whole_network/';
-output_pickle = output_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+uid+'_score_matrix.pkl'
+uid = 'ab420746'; matrices_dir='results/score_matrices/lcc_whole_network/';
+output_pickle = matrices_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+uid+'_score_matrix.pkl'
 ngr_score_matrix = pickle.load(open(output_pickle, "rb"))
 
 # load whole ppi;
-ppi_matrix_prefix = '../ppi/code/results/'+ppi_network+'_converted_matrix'
+ppi_matrix_prefix = '../ppi/code/results/score_matrices/'+ppi_network+'_converted_matrix'
 genomics_matrix_prefix = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'+variant_type+'_'+cancer_type+'_matrix'
 
 # read whole-ppi index; IMPORTANT SET VALUE OF PARAMETER ppi_cancer_type TO '' TO GET INDEX OF WHOLE PPI FOR RESULT ASSESSMENT
@@ -35,8 +62,8 @@ print(extended_ppi_matrix_prefix)
 #B. Tissue-specific PPI
 
 # load tissue-specific-ppi results
-uid2 = '55b78775'; output_dir2='results/';
-output_pickle2 = output_dir2+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_'+uid2+'_score_matrix.pkl'
+uid2 = '55b78775'; matrices_dir2='results/score_matrices/';
+output_pickle2 = matrices_dir2+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_'+uid2+'_score_matrix.pkl'
 ngr_score_matrix2 = pickle.load(open(output_pickle2, "rb"))
 
 # load tissue-specific ppi;
@@ -58,7 +85,8 @@ print('--------------------')
 print(extended_ppi_matrix_prefix2)
 
 # C. Load scores and evaluate
-ngr_scores = hp.process_ngr_results(ngr_score_matrix, ppi_matrix_index, uid=uid, output_dir=output_dir) # ngr and initial scores in both structured arrays (i.e. called lists here) are re-ordered w.r.t. to their respective decreasing order of scores
-ngr_scores2 = hp.process_ngr_results(ngr_score_matrix2, ppi_matrix_index2, uid=uid2, output_dir=output_dir2) # ngr and initial scores in both structured arrays (i.e. called lists here) are re-ordered w.r.t. to their respective decreasing order of scores
+ngr_scores = hp.process_ngr_results(ngr_score_matrix, ppi_matrix_index, uid=uid, matrices_dir=matrices_dir) # ngr and initial scores in both structured arrays (i.e. called lists here) are re-ordered w.r.t. to their respective decreasing order of scores
+ngr_scores2 = hp.process_ngr_results(ngr_score_matrix2, ppi_matrix_index2, uid=uid2, matrices_dir=matrices_dir2) # ngr and initial scores in both structured arrays (i.e. called lists here) are re-ordered w.r.t. to their respective decreasing order of scores
 
-eval.evaluate_results((ngr_scores2, ngr_scores), gold_standard_file, ('Tissue-PPI', 'Whole-PPI'), cancer_type=cancer_type, variant_type=variant_type, comp_measures=('Accuracy', 'F1', 'Precision'))
+eval.compare_lists((ngr_scores2, ngr_scores), gold_standard_file, ('Tissue-PPI', 'Whole-PPI'), cancer_type=cancer_type, variant_type=variant_type, comp_measures=('Accuracy', 'F1', 'Precision'))
+'''

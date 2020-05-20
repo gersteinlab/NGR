@@ -35,3 +35,6 @@ Rscript merge_features.R -v germline
 
 PPI network matrices:
 To generate PPI matrices to be used by the Python script of the method, run sbatch convert_ppi_network_to_matrix_script.sh in ppi/code/
+
+For result generation, see method/README.txt
+

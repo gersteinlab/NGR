@@ -3,16 +3,19 @@ import scipy.stats as st
 from scipy.spatial import distance
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, precision_score, recall_score, precision_recall_curve, auc
 from scipy.stats import hypergeom
-import sys
+
 import helper_functions as hp
 from scipy.constants.codata import precision
+
+import sys
+import pickle
 
 # initial_scores is a structured array with two columns: 'gene' and 'score'
 # result_genes and result_scores are 2-D structured arrays: lists of genes and resulting scores to be evaluated
 # gold_standard_file referes to csv file with two columns: 'gene' and 'score'
 # N is the number of genes to be compared across lists
 # comparison measure options: euclidean (Euclidean distance between individual genes w.r.t. gold standard)
-def evaluate_results(ranked_score_lists, gold_standard_file, list_names, cancer_type, variant_type, comp_measures=('AO'), id_colname='gene', value_colname='score'):
+def compare_lists(ranked_score_lists, gold_standard_file, list_names, cancer_type, variant_type, comp_measures=('AO'), id_colname='gene', value_colname='score'):
     header = ''.ljust(20)
     for cm in comp_measures:
         header += '{0: <20}'.format(cm)
@@ -108,8 +111,67 @@ def evaluate_results(ranked_score_lists, gold_standard_file, list_names, cancer_
             score = round(score, 3)
             print('{0: <20}'.format(score), end="")
 
-# EVALUATION FUNCTIONS:
-# All evaluation functions below assume lists are sorted in decreasing order; each input list is 1-D (i.e. a column from the structured array used in evaluate_results() above
+## EVALUATION FUNCTIONS:
+
+# MOBILITY LIST FUNCITONS
+# generated mobility lists across variant types, cancer types, ppis and ppi_levels
+def generate_batch_gene_mobility_lists(uids_filename):
+    matrices_dir = 'results/score_matrices/'
+    ppi_matrix_dir = '../ppi/code/results/'
+    genomics_matrix_dir = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'
+    output_dir = 'results/mobility_lists/'
+    
+    variant_types = ['somatic_MC3']
+    ppi_networks = ['STRING', 'HumanNetv2', 'HuRI']
+    cancer_types = ['BRCA', 'LUAD', 'LUSC']
+    ppi_levels = ['tissue_ppi']
+    
+    uids = hp.get_uids_dict(uids_filename) # update parameters to include uids of pickles for each results matrix
+    
+    for variant_type in variant_types:
+        for cancer_type in cancer_types:
+            for ppi_network in ppi_networks:
+                for ppi_level in ppi_levels:
+                    uid = uids[variant_type][cancer_type][ppi_network][ppi_level]
+                    print('\n[{0}, {1}, {2}, {3} started. UID: {4}.]'.format(variant_type, cancer_type, ppi_network, ppi_level, uid))
+                                      
+                    output_pickle = matrices_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_'+uid+'_score_matrix.pkl'
+                    ngr_score_matrix = pickle.load(open(output_pickle, "rb"))
+        
+                    ppi_matrix_prefix = ppi_matrix_dir+ppi_network+'_converted_matrix'
+                    genomics_matrix_prefix = genomics_matrix_dir+variant_type+'_'+cancer_type+'_matrix'
+                    
+                    ppi_matrix, ppi_matrix_index, extended_ppi_matrix_prefix, genomics_matrix, genomics_matrix_row_index, genomics_matrix_col_index = hp.get_ngr_inputs(genomics_matrix_prefix, ppi_matrix_prefix, genomics_matrix_transformed=True, largest_cc=True, ppi_cancer_type=cancer_type, matrix_normalization_method='insulated_diffusion')
+                    
+                    mobility_list = generate_gene_mobility_list(genomics_matrix, ngr_score_matrix, genomics_matrix_row_index)
+                    mobility_list_filename = output_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_'+uid+'_mobility_list.csv'
+                    
+                    np.savetxt(mobility_list_filename, np.stack((mobility_list['gene'], mobility_list['mobility_score'], mobility_list['initial_rank'], mobility_list['ngr_rank']), axis=1), fmt='%s', delimiter=',')
+
+                    print('\n[{0}, {1}, {2}, {3} mobility list saved in {4}]'.format(variant_type, cancer_type, ppi_network, ppi_level, mobility_list_filename))
+    
+# generates lists sorted in increasing order of mobility: difference between initial and post-diffusion rank
+# values are -ve (for upward mobility) and +ve (downward); upward 'passenger' genes are of more interest
+def generate_gene_mobility_list(initial_matrix, ngr_matrix, gene_index):
+    initial_scores_order = np.flip(np.argsort(np.mean(initial_matrix, axis=1)))
+    ngr_scores_order = np.flip(np.argsort(np.mean(ngr_matrix, axis=1)))
+
+    initial_ranks = np.zeros(initial_scores_order.shape)
+    ngr_ranks = np.zeros(ngr_scores_order.shape)
+    
+    for i in range(len(initial_scores_order)):
+        initial_ranks[initial_scores_order[i]] = i # rank of each gene in a would-be sorted list
+        ngr_ranks[ngr_scores_order[i]] = i
+        
+    mobility_score = initial_ranks - ngr_ranks # mobility is the different in ranks between initial and ngr list
+    
+    mobility_list = np.array(list(zip(gene_index, mobility_score, initial_ranks, ngr_ranks)), dtype=[('gene', 'U25'), ('mobility_score', 'i4'), ('initial_rank', 'i4'), ('ngr_rank', 'i4')])
+    mobility_list = np.flip(np.sort(mobility_list, order=['mobility_score']))
+    
+    return mobility_list
+
+# LIST COMPARISON FUNCTIONS
+# All evaluation functions below assume lists are sorted in decreasing order; each input list is 1-D (i.e. a column from the structured array used in compare_lists() above
 # In these functions, a list is 1-D
 
 # calculates Eucliden or Manhattan distance between ranks of elements in two ordered lists
