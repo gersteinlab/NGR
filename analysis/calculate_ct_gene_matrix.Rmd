@@ -1,0 +1,75 @@
+---
+title: "calculate_ct_gene_matrix.Rmd"
+output: html_document
+---
+
+```{r cars}
+cancer_types <- c('BRCA', 'CESC', 'CHOL', 'COAD', 'ESCA', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LIHC', 'LUAD', 'LUSC', 'PRAD', 'READ', 'STAD', 'THCA', 'UCEC')
+lists_dir <- 'mobility_lists/prioritized_lists/'
+all_genes <- c()
+
+# get list of all genes (i.e. cols of heatmap)
+for(ct in cancer_types){
+  pr_list <- read.table(paste(lists_dir , 'somatic_MC3_', ct, '_STRING-HumanNetv2_lcc_', tolower(ct), '_prioritized_mobility_list.csv', sep=''), sep=',', header=T, stringsAsFactors=F)
+  pr_list <- pr_list[which(pr_list$p_neg_score_crispr >= 0.5 | pr_list$p_neg_score_rnai >= 0.5), ]
+  all_genes = union(all_genes, pr_list$gene)
+}
+
+# build matrix for heatmap
+ct_gene_df <- data.frame(gene=all_genes)
+for(ct in cancer_types){
+  pr_list <- read.table(paste(lists_dir , 'somatic_MC3_', ct, '_STRING-HumanNetv2_lcc_', tolower(ct), '_prioritized_mobility_list.csv', sep=''), sep=',', header=T, stringsAsFactors=F)
+  pr_list$p_max_crispr_rnai <- apply(pr_list[, c('p_neg_score_crispr', 'p_neg_score_rnai')], 1, max)
+  ct_gene_df <- cbind(ct_gene_df,  pr_list$p_max_crispr_rnai[match(all_genes, pr_list$gene)])
+}
+
+ct_gene_df[is.na(ct_gene_df)] <- 0
+ct_gene_df[2:ncol(ct_gene_df)][ct_gene_df[2:ncol(ct_gene_df)] < 0.5] <- 0 # genes with depmap scores < 0.5 some cancer type(s) but not other(s); set values to 0's in those where they do not.
+colnames(ct_gene_df) <- c('gene', cancer_types)
+```
+
+
+```{r}
+# draw heatmap, for inspection purposes
+ct_gene_dm <- data.matrix(ct_gene_df[, 2:ncol(ct_gene_df)])
+rownames(ct_gene_dm) <- ct_gene_df$gene
+
+library(RColorBrewer)
+heatmap(ct_gene_dm, scale='none', col=colorRampPalette(brewer.pal(9, 'Blues'))(256), cexRow=0.3) # build matrix for heatmap
+
+# 237 genes in total, 41 are in 10+ cancer types, 196 in 1-9 (83 in 1 cancer type, 113 in 2-9)
+```
+
+```{r}
+# Circos data: generate band data used in karyotype files; heatmap data used in, well, heatmaps
+
+# multicancer data
+library(reshape)
+
+ct_specific_genes <- ct_gene_df$gene[which(rowSums((ct_gene_df[, 2:ncol(ct_gene_df)] > 0)) == 1)]
+multicancer_genes <- setdiff(ct_gene_df$gene, ct_specific_genes)
+multicancer_ct_gene_dm <- ct_gene_dm[multicancer_genes, ]
+multicancer_heatmap <- heatmap(multicancer_ct_gene_dm, scale='none', col=colorRampPalette(brewer.pal(9, 'Blues'))(256), cexRow=0.3) # build matrix for heatmap
+
+# multicancer gene bands
+ordered_multicancer_genes <- rownames(multicancer_ct_gene_dm)[rev(multicancer_heatmap$rowInd)] # top to bttom
+multicancer_chr_start <- seq(0, (length(ordered_multicancer_genes)-1)*100, 100); multicancer_chr_end <- multicancer_chr_start + 100
+multicancer_bands <- data.frame(band=rep("band", length(ordered_multicancer_genes)), hs1=rep("hs1", length(ordered_multicancer_genes)), gene1=ordered_multicancer_genes, gene2=ordered_multicancer_genes, start=multicancer_chr_start, end=multicancer_chr_end, color=rep("green", length(ordered_multicancer_genes)))
+
+# multicancer heatmap
+ordered_cancer_types <- colnames(multicancer_ct_gene_dm)[multicancer_heatmap$colInd]
+multicancer_ct_gene_dm <- multicancer_ct_gene_dm[ordered_multicancer_genes, ordered_cancer_types] # genes and cancer types in matrix will be in same order as in heatmap
+melted_multicancer_ct_gene_dm <- melt(multicancer_ct_gene_dm)
+melted_multicancer_ct_gene_dm$start <- rep(multicancer_chr_start, length(ordered_cancer_types))
+melted_multicancer_ct_gene_dm$end <- rep(multicancer_chr_end, length(ordered_cancer_types))
+melted_multicancer_ct_gene_dm$chr <- 'hs1'
+melted_multicancer_ct_gene_dm <- melted_multicancer_ct_gene_dm[, c('chr', 'start', 'end', 'value', 'X1', 'X2')]
+
+for(i in 1:length(ordered_cancer_types)){
+  ct <- ordered_cancer_types[i]
+  ct_circos_heatmap_data <- melted_multicancer_ct_gene_dm[melted_multicancer_ct_gene_dm$X2 == ct, 1:4]
+write.table(ct_circos_heatmap_data, paste('heatmap.ct.', i, '.txt', sep=''), col.names=F, row.names=F, quote=F, sep=' ')
+  print(paste('Multicancer heatmap data for ', i, ':', ct, 'done', sep=' '))
+}
+
+```

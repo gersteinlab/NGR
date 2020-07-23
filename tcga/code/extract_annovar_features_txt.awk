@@ -12,7 +12,7 @@ BEGIN{
 		if(sample_cancer_type == cancer_type)
 			cancer_type_barcodes = cancer_type_barcodes sample_barcode "-"
 	} else if(FNR > 1){ # annotated file
-		if(($6 ~ "exonic" || $6 ~ "splicing") && !($6 ~ "nc")){
+		if(($6 ~ "exonic" || $6 ~ "splicing") && !($6 ~ "nc")){ # choose coding exonic and splicing variants only
 			# varpergene and samplepergene
 			split($7, gene_names, ";") # to account for certain records where multiple genes are separated by semi-colons
 			for(i in gene_names){

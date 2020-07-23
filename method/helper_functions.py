@@ -286,7 +286,6 @@ def expand_genomics_matrix(ppi_matrix, ppi_matrix_index, genomics_matrix, genomi
     print('Input matrix expansion done. Expanded matrix dimensions: {0}.'.format(expanded_genomics_matrix.shape))
     return expanded_genomics_matrix, expanded_genomics_matrix_row_index
 
-
 # initial_scores is a structured array with two columns: 'gene' and 'score'
 # ngr_scores is a numpy arrays of scores
 # processes the output of NGR and returns two structured arrays to facilitate evaluation; each array has two columns, 'gene' and 'score,' and its rows are sorted in decreasing order of score

@@ -51,7 +51,7 @@ def compare_lists(ranked_score_lists, gold_standard_file, list_names, cancer_typ
         ranked_scores = np.flip(np.sort(ranked_score_lists[l][ranked_score_inds], order='score'))
 
         print('\n{0: <20}'.format(list_names[l]), end="")
-        for cm in comp_measures:        
+        for cm in comp_measures:
             if 'dist' in cm:
                 dist_measure = 'euclidean_dist'
                 if 'manhattan' in cm:
@@ -90,10 +90,10 @@ def compare_lists(ranked_score_lists, gold_standard_file, list_names, cancer_typ
                     precision, recall, thresholds = precision_recall_curve(gold_standard_labels, ngr_labels)
                     score = auc(recall, precision)
             elif cm == 'Hypergeom_test': # hypergeometric enrichment test
-                known_genes_file = '../gene_lists/known_genes/COSMIC_v90_membership_'+cancer_type+'_'+variant_type+'.csv'
+                known_genes_file = '../gene_lists/known_genes/COSMIC_v90_membership.csv'
                 known_genes = np.genfromtxt(known_genes_file, delimiter=',', skip_header=1, dtype='U25,i4', names=('gene','score'))
                 
-                S = int(0.1 * N) # sample size
+                S = 1000 #int(0.025 * N) # sample size
                 
                 sample_common_known_genes = np.intersect1d(known_genes['gene'], ranked_scores[id_colname][0:S])
                 x = len(sample_common_known_genes) # number of "successes" in the sample of size N
@@ -106,7 +106,7 @@ def compare_lists(ranked_score_lists, gold_standard_file, list_names, cancer_typ
                 if pval < 0.05:
                     score = 1
 
-                #print('{0}, {1}, {2}, {3}. P-val: {4}'.format(N, n, S, x, pval))
+                print('{0}, {1}, {2}, {3}. P-val: {4}'.format(N, n, S, x, pval), end=" ")
                 
             score = round(score, 3)
             print('{0: <20}'.format(score), end="")
@@ -119,37 +119,36 @@ def generate_batch_gene_mobility_lists(uids_filename):
     matrices_dir = 'results/score_matrices/'
     ppi_matrix_dir = '../ppi/code/results/'
     genomics_matrix_dir = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'
-    output_dir = 'results/mobility_lists/'
-    
-    variant_types = ['somatic_MC3']
-    ppi_networks = ['STRING', 'HumanNetv2', 'HuRI']
-    cancer_types = ['BRCA', 'LUAD', 'LUSC']
-    ppi_levels = ['tissue_ppi']
-    
-    uids = hp.get_uids_dict(uids_filename) # update parameters to include uids of pickles for each results matrix
-    
-    for variant_type in variant_types:
-        for cancer_type in cancer_types:
-            for ppi_network in ppi_networks:
-                for ppi_level in ppi_levels:
-                    uid = uids[variant_type][cancer_type][ppi_network][ppi_level]
-                    print('\n[{0}, {1}, {2}, {3} started. UID: {4}.]'.format(variant_type, cancer_type, ppi_network, ppi_level, uid))
-                                      
-                    output_pickle = matrices_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_'+uid+'_score_matrix.pkl'
-                    ngr_score_matrix = pickle.load(open(output_pickle, "rb"))
-        
-                    ppi_matrix_prefix = ppi_matrix_dir+ppi_network+'_converted_matrix'
-                    genomics_matrix_prefix = genomics_matrix_dir+variant_type+'_'+cancer_type+'_matrix'
-                    
-                    ppi_matrix, ppi_matrix_index, extended_ppi_matrix_prefix, genomics_matrix, genomics_matrix_row_index, genomics_matrix_col_index = hp.get_ngr_inputs(genomics_matrix_prefix, ppi_matrix_prefix, genomics_matrix_transformed=True, largest_cc=True, ppi_cancer_type=cancer_type, matrix_normalization_method='insulated_diffusion')
-                    
-                    mobility_list = generate_gene_mobility_list(genomics_matrix, ngr_score_matrix, genomics_matrix_row_index)
-                    mobility_list_filename = output_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_'+uid+'_mobility_list.csv'
-                    
-                    np.savetxt(mobility_list_filename, np.stack((mobility_list['gene'], mobility_list['mobility_score'], mobility_list['initial_rank'], mobility_list['ngr_rank']), axis=1), fmt='%s', delimiter=',')
+    output_dir = 'results/mobility_lists/whole_lists/'
 
-                    print('\n[{0}, {1}, {2}, {3} mobility list saved in {4}]'.format(variant_type, cancer_type, ppi_network, ppi_level, mobility_list_filename))
-    
+    uids_file = open(uids_filename, 'r')
+    lines = uids_file.readlines()
+
+    for l in lines:
+        values = l.split(' ')
+        variant_type = values[0]
+        cancer_type = values[1]
+        ppi_network = values[2]
+        ppi_level = values[3]
+        uid = values[4].strip()
+        
+        print('\n[{0}, {1}, {2}, {3} started. UID: {4}.]'.format(variant_type, cancer_type, ppi_network, ppi_level, uid))
+                          
+        output_pickle = matrices_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_'+uid+'_score_matrix.pkl'
+        ngr_score_matrix = pickle.load(open(output_pickle, "rb"))
+
+        ppi_matrix_prefix = ppi_matrix_dir+ppi_network+'_converted_matrix'
+        genomics_matrix_prefix = genomics_matrix_dir+variant_type+'_'+cancer_type+'_matrix'
+        
+        ppi_matrix, ppi_matrix_index, extended_ppi_matrix_prefix, genomics_matrix, genomics_matrix_row_index, genomics_matrix_col_index = hp.get_ngr_inputs(genomics_matrix_prefix, ppi_matrix_prefix, genomics_matrix_transformed=True, largest_cc=True, ppi_cancer_type=cancer_type, matrix_normalization_method='insulated_diffusion')
+        
+        mobility_list = generate_gene_mobility_list(genomics_matrix, ngr_score_matrix, genomics_matrix_row_index)
+        mobility_list_filename = output_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_mobility_list.csv'
+        
+        np.savetxt(mobility_list_filename, np.stack((mobility_list['gene'], mobility_list['mobility_score'], mobility_list['initial_rank'], mobility_list['ngr_rank']), axis=1), fmt='%s', delimiter=',')
+
+        print('\n[{0}, {1}, {2}, {3} mobility list saved in {4}]'.format(variant_type, cancer_type, ppi_network, ppi_level, mobility_list_filename))
+
 # generates lists sorted in increasing order of mobility: difference between initial and post-diffusion rank
 # values are -ve (for upward mobility) and +ve (downward); upward 'passenger' genes are of more interest
 def generate_gene_mobility_list(initial_matrix, ngr_matrix, gene_index):
@@ -174,6 +173,39 @@ def generate_gene_mobility_list(initial_matrix, ngr_matrix, gene_index):
 # All evaluation functions below assume lists are sorted in decreasing order; each input list is 1-D (i.e. a column from the structured array used in compare_lists() above
 # In these functions, a list is 1-D
 
+def generate_batch_hypergemetric_pvalues(uids_filename):
+    matrices_dir = 'results/score_matrices/'
+    ppi_matrix_dir = '../ppi/code/results/'
+    genomics_matrix_dir = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'
+    gold_standard_file = '../gene_lists/code/results/gold_standard_lists/cancerMine_both_depmap_both_values_mean_scores_breast_tissue.csv' # used only to run the function successfully
+
+    uids_file = open(uids_filename, 'r')
+    lines = uids_file.readlines()
+
+    for l in lines:
+        values = l.split(' ')
+        variant_type = values[0]
+        cancer_type = values[1]
+        ppi_network = values[2]
+        ppi_level = values[3]
+        uid = values[4].strip()
+        
+        print('\nWorking on {0}, {1}, {2}, {3}: {4}'.format(variant_type, cancer_type, ppi_network, ppi_level, uid))
+             
+        output_pickle = matrices_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_'+uid+'_score_matrix.pkl'
+        ngr_score_matrix = pickle.load(open(output_pickle, "rb"))
+
+        ppi_matrix_prefix = ppi_matrix_dir+ppi_network+'_converted_matrix'
+        genomics_matrix_prefix = genomics_matrix_dir+variant_type+'_'+cancer_type+'_matrix'
+        
+        ppi_matrix, ppi_matrix_index, extended_ppi_matrix_prefix, genomics_matrix, genomics_matrix_row_index, genomics_matrix_col_index = hp.get_ngr_inputs(genomics_matrix_prefix, ppi_matrix_prefix, genomics_matrix_transformed=True, largest_cc=True, ppi_cancer_type=cancer_type, matrix_normalization_method='insulated_diffusion')
+
+        # ngr scores in a structured array
+        ngr_scores = hp.process_ngr_results(ngr_score_matrix, ppi_matrix_index, save_files=False, uid=uid) 
+
+        compare_lists((ngr_scores, ngr_scores), gold_standard_file, ('Tissue-PPI', 'Tissue-PPI-Redundant'), cancer_type=cancer_type, variant_type=variant_type, comp_measures=('Accuracy', 'Hypergeom_test'))
+        
+        
 # calculates Eucliden or Manhattan distance between ranks of elements in two ordered lists
 def distance_measure(input_list1, input_list2, measure='manhattan_dist'):
     ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)

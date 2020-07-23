@@ -1,0 +1,109 @@
+---
+title: "generate_cancer_type_dependency_lists.Rmd"
+author: "Hussein Mohsen"
+date: "7/23/2019"
+output: html_document
+---
+
+```{r}
+output_dir <- 'results/'
+cancer_types <- c('BRCA', 'LUAD', 'LUSC', 'ACC', 'ALL', 'BLCA', 'CESC', 'CHOL', 'CLL', 'COAD', 'DLBC', 'ESCA', 'GBM', 'HNSC', 'KIRC', 'LAML', 'LCML', 'LGG', 'LIHC', 'MB', 'MESO', 'MM', 'NB', 'OV', 'PAAD', 'PRAD', 'READ', 'SARC', 'SCLC', 'SKCM', 'STAD', 'THCA', 'UCEC', 'UVM')
+
+depMap_files_dir <- '../dependency/'
+file_extension <- 'csv'
+```
+
+```{r}
+# CRISPR Knockout file (Achilles_gene_effect.csv)
+# Each resulting depMap_data data frame has genes as columns and cell lines as cell lines with tissues being part of the cell line names)
+crispr_file_prefix <- 'Achilles_gene_effect'
+scores_filename <- paste(depMap_files_dir, crispr_file_prefix, '.', file_extension, sep='')
+
+cell_line_filename <- paste(depMap_files_dir, 'CCLE_annotations_curatedv3.csv', sep='')
+cell_line_data <- read.table(cell_line_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
+#cell_line_data <- cell_line_data[!is.na(cell_line_data$depMapID), ]
+```
+
+```{r}
+crispr_depMap_data <- read.table(scores_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
+cell_lines <- crispr_depMap_data[, 'X']
+crispr_depMap_data <- crispr_depMap_data[, 2:ncol(crispr_depMap_data)]
+dot_indices <- regexpr('\\.\\.', colnames(crispr_depMap_data)) # clean col names
+colnames(crispr_depMap_data) <- substr(colnames(crispr_depMap_data), 0, dot_indices-1) # remove dots and their inline text to have gene names
+rownames(crispr_depMap_data) <- cell_lines
+crispr_depMap_data[is.na(crispr_depMap_data)] <- 0
+```
+
+```{r}
+# RNAi file (D2_combined_gene_depMap_scores.csv)
+rnai_file_prefix <- 'D2_combined_gene_dep_scores' 
+scores_filename <- paste(depMap_files_dir, rnai_file_prefix, '.', file_extension, sep='')
+
+rnai_depMap_data <- read.table(scores_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
+genes <- rnai_depMap_data[, 'X']
+
+bracket_indices <- regexpr('\\(', genes)
+genes <- substr(genes, 0, bracket_indices-2) # remove brackets and their inline text to have gene names
+
+rnai_depMap_data <- rnai_depMap_data[, 2:ncol(rnai_depMap_data)]
+rownames(rnai_depMap_data) <- genes
+rnai_depMap_data <- t(rnai_depMap_data) # so that both data frames have genes as columns and rows as cell lines
+
+rnai_depMap_data[is.na(rnai_depMap_data)] <- 0
+```
+
+```{r}
+# Supdate gene dependency lists and include cell line columns alongside resulting score
+dl_depMap_dataset <- 'crispr' # or rnai
+if(dl_depMap_dataset == 'crispr'){
+  dl_depMap_data <- crispr_depMap_data 
+  dl_depMap_file_prefix <- crispr_file_prefix
+  dl_keycol <- 'depMapID'
+} else{
+  dl_depMap_data <- rnai_depMap_data
+  dl_depMap_file_prefix <- rnai_file_prefix
+  dl_keycol <- 'CCLE_ID'
+}
+
+dl_output_dir <- '../dependency/'
+for(ct in cancer_types){
+  tryCatch(
+    expr = {
+      print(paste('Working on ', ct, '...', sep=''))
+    
+      selected_dl_depMap_data <- dl_depMap_data
+
+      if(ct != 'all'){
+          ct_cell_line_ids <- cell_line_data[which(cell_line_data$TCGA_TESS == ct), dl_keycol] 
+          ct_depMap_inds <- which(gsub('^X', '', rownames(selected_dl_depMap_data)) %in% ct_cell_line_ids)
+
+          if(length(ct_depMap_inds) > 0)
+            selected_dl_depMap_data <- selected_dl_depMap_data[ct_depMap_inds, ]
+      }
+      
+      if(ct == 'all' || length(ct_depMap_inds) > 0){
+        if(length(ct_depMap_inds) > 1) {
+          selected_dl_depMap_data <- t(selected_dl_depMap_data)
+          dep_score <- apply(selected_dl_depMap_data, 1, mean)
+          selected_dl_depMap_data <- cbind(dep_score, selected_dl_depMap_data)
+          matrix_to_write <- cbind(rownames(selected_dl_depMap_data), selected_dl_depMap_data)
+        } else{
+          matrix_to_write <- as.data.frame(cbind(names(selected_dl_depMap_data), as.numeric(selected_dl_depMap_data)))
+        }
+
+        colnames(matrix_to_write)[1:2] <- c('gene','dep_score')
+                  
+        # write file
+        dl_avgdep_filename <- paste(dl_output_dir, dl_depMap_file_prefix, '_', ct, '.csv', sep='')
+        dl_avgdep_filename <- gsub('\\|', '-', dl_avgdep_filename)
+
+        print(paste('Generating ', dl_avgdep_filename, '...', sep=''))
+        write.table(matrix_to_write, dl_avgdep_filename, row.names=F, col.names=T, quote=F, sep=',')
+      } else{
+        print(paste('Cancer type ', ct, ' had no cell lines.', sep=''))
+      }
+    }, error = function(e){
+      print(e)
+  })
+}
+```

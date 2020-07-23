@@ -5,19 +5,15 @@ date: "7/23/2019"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 ```{r}
 depMap_datasets <- 'both' #'crispr', 'rnai', or 'both'
 include_cancerMine <- T
 depMap_agg_fn <- 'mean' # 'mean' or 'sd' to aggregate resulting scores
-vals <- 'negative' # 'both' (for all values, positive and negative) or 'negative' (for negative values only)
-output_dir <- 'results/'
+vals <- 'both' # 'both' (fdimor all values, positive and negative) or 'negative' (for negative values only)
+output_dir <- 'results/gold_standard_lists/'
 
-all_tissues <- c('all', 'blood', 'kidney', 'leg', 'bone', 'arm', 'pancrea', 'uter', 'ovar', 'bone_marrow', 'lymph_node', 'head', 'neck', 'skin', 'thym', 'colo', 'rect', 'stomach', 'liver', 'lung', 'esophag', 'cervix', 'brain', 'bladder', 'testes', 'spinal', 'anus', 'peni', 'saliv', 'mouth', 'thyroid', 'intestine', 'muscle', 'heart', 'uterus', 'prosta', 'eye', 'vulva')
-selected_tissues <- c('all', 'bladder', 'breast', 'cervix', 'ovary', 'liver', 'colo', 'esophag', 'head|neck', 'kidney', 'liver', 'lung', 'prosta', 'rect', 'stomach', 'thyroid')
+all_tissues <- c('all', 'blood', 'kidney', 'leg', 'bone', 'arm', 'pancrea', 'uter', 'ovar', 'bone_marrow', 'lymph_node', 'head', 'neck', 'skin', 'thym', 'colo', 'rect', 'stomach', 'liver', 'lung', 'esophag', 'cervix', 'brain', 'bladder', 'testes', 'spinal', 'anus', 'peni', 'saliv', 'mouth', 'thyroid', 'intestine', 'muscle', 'heart', 'uterus', 'rosta', 'eye', 'vulva')
+selected_tissues <- c('all', 'bladder', 'breast', 'cervix', 'ovary', 'liver', 'colo', 'esophag', 'head|neck', 'kidney', 'lung', 'prosta', 'rect', 'stomach', 'thyroid')
 ```
 
 
@@ -47,8 +43,10 @@ scores_filename <- paste(depMap_files_dir, crispr_file_prefix, '.', file_extensi
 
 cell_line_filename <- paste(depMap_files_dir, 'CCLE_annotations_curatedv3.csv', sep='')
 cell_line_data <- read.table(cell_line_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
-cell_line_data <- cell_line_data[!is.na(cell_line_data$depMapID), ]
+#cell_line_data <- cell_line_data[!is.na(cell_line_data$depMapID), ]
+```
 
+```{r}
 crispr_depMap_data <- read.table(scores_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
 cell_lines <- crispr_depMap_data[, 'X']
 crispr_depMap_data <- crispr_depMap_data[, 2:ncol(crispr_depMap_data)]
@@ -59,7 +57,7 @@ colnames(crispr_depMap_data) <- substr(colnames(crispr_depMap_data), 0, dot_indi
 cell_line_data[, 'Tissue'] <- gsub(' ', '_', cell_line_data[, 'Tissue'])
 
 inds_of_tissue_cell_lines <- which(cell_lines %in% cell_line_data[, 'depMapID'])
-cell_lines[inds_of_tissue_cell_lines] <- paste(cell_lines[inds_of_tissue_cell_lines], cell_line_data[inds_of_tissue_cell_lines, 'Tissue'], sep='_')
+cell_lines[inds_of_tissue_cell_lines] <- paste(cell_lines[inds_of_tissue_cell_lines], cell_line_data[match(cell_lines[inds_of_tissue_cell_lines], cell_line_data[, 'depMapID']), 'Tissue'], sep='_')
 
 library(mgsub)
 cell_lines <- mgsub(cell_lines, depMap_from, depMap_to)
@@ -70,8 +68,8 @@ crispr_depMap_data[is.na(crispr_depMap_data)] <- 0
 
 ```{r}
 # RNAi file (D2_combined_gene_depMap_scores.csv)
-file_prefix <- 'D2_combined_gene_dep_scores' 
-scores_filename <- paste(depMap_files_dir, file_prefix, '.', file_extension, sep='')
+rnai_file_prefix <- 'D2_combined_gene_dep_scores' 
+scores_filename <- paste(depMap_files_dir, rnai_file_prefix, '.', file_extension, sep='')
 
 rnai_depMap_data <- read.table(scores_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
 genes <- rnai_depMap_data[, 'X']
@@ -126,6 +124,14 @@ normalize <- function(x, epsilon=0.02)
 
 # a function to perform DepMap data aggregation & normalization
 normalize_depMap_scores <- function(depMap_data, depMap_agg_fn){
+  if(nrow(depMap_data) == 1){
+    col_names <- colnames(depMap_data)
+    depMap_data <- as.numeric(depMap_data)
+    names(depMap_data) <- col_names
+    
+    return(depMap_data)
+  }
+  
   if(depMap_agg_fn == 'mean'){
     depMap_scores <- colMeans(depMap_data)
     depMap_scores <- sort(depMap_scores)
@@ -231,7 +237,7 @@ for(t in selected_tissues){
           t_depMap_inds <- grep(t, rownames(depMap_data))
           if(length(t_depMap_inds) > 0)
             selected_depMap_data <- selected_depMap_data[t_depMap_inds, ]
-            
+          
           t_cancerMine_inds <- grep(t, cancerMine_data[, 'cancer_normalized_with_tissue_name'])
           if(length(t_cancerMine_inds) > 0)
             selected_cancerMine_data <- cancerMine_data[t_cancerMine_inds, ]

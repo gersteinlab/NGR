@@ -22,9 +22,11 @@ For data download, annotation (using ANNOVAR), and feature extraction in somatic
 
 For PPI ID conversion, processing, and convesion to matrices, see ppi/README.txt
 
-(Optional, ~ obsolete as new PPIs has been generated) PPI metric (e.g. centrality) generation:
+(Optional, ~ OBSOLETE as new PPIs have been generated and sample-level results are used) PPI metric (e.g. centrality) generation:
 To generate betweenness centrality results, run (full commands in NGR Board sheet) ppi_centrality_script.sh in ppi/code
 Betweenness centrality results are in ppi/code/results
+
+For gold standard list generation, see gene_lists/README.txt.
 
 Combined score generation:
 To merge features and generate combined scores to be used as inputs to the method, locally run in base/:

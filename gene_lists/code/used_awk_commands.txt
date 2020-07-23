@@ -1,0 +1,17 @@
+# Cancer type-specific known genes from COSMIC:
+
+cancer_type="BRCA"
+cancer_type_terms="breast_breast cancer_breast cancinoma"
+
+cancer_type="LUAD"
+cancer_type_terms="- lung_lung cancer_lung cancinoma_NSCLC_lung adenocarcinoma"
+
+cancer_type="LUSC"
+cancer_type_terms="- lung_lung cancer_lung cancinoma_NSCLC_lung squamous cell_- SCC_- Lung SCC_- lung SCC_^SCC"
+
+awk -v cancer_type=$cancer_type -v cancer_type_terms="$cancer_type_terms" 'BEGIN{FS=","; somatic_col=10; split(cancer_type_terms, terms, "_"); print "gene,list_membership_COSMIC_v90_"cancer_type} {for(i=1; i<=length(terms); i++){if($somatic_col ~ terms[i]){print $1 ",1"; break} }}' COSMIC_v90_Census_all_Oct_1_19.csv > "COSMIC_v90_membership_"$cancer_type"_somatic_MC3.csv"
+
+
+# Cancer type-specific in Cancer Mine
+# When updating cancer types in CancerMine, moving from one version to another; this prints new cancer types or ones that has tisue name in them so they're added and updated
+awk -v tissue="breast" 'BEGIN{FS="\t"} {if(pass==1){ct[$4]=1} else if(pass==2){if(ct[$4] == "" || $4 ~ tissue){print $4} }}' pass=1 cancermine_collated_v20_Jan2020.tsv pass=2 cancermine_collated_v24_May2020.tsv | sort | uniq

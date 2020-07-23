@@ -1,3 +1,5 @@
+import argparse
+
 import ngr
 import helper_functions as hp
 import evaluation_functions as eval
@@ -8,16 +10,31 @@ from scipy.spatial import distance
 import datetime
 import uuid
 import pickle
-import sys
+
+parser = argparse.ArgumentParser(description="Argument Parser")
+parser.add_argument("--ct", help="cancer type")
+parser.add_argument("--ppi", help="ppi network")
+args = parser.parse_args()
+
+cancer_type = 'LUSC' 
+ppi_network='STRING'
+
+if args.ct:
+    cancer_type = args.ct
+    print("Cancer type set to {}".format(cancer_type))
+
+if args.ppi:
+    ppi_network = args.ppi
+    print("PPI network set to {}".format(ppi_network))
+
+variant_type = 'somatic_MC3';  output_dir='results/score_matrices/'; output_filename_suffix = 'lcc_'+cancer_type.lower()    
+ppi_matrix_prefix = '../ppi/code/results/'+ppi_network+'_converted_matrix'
+genomics_matrix_prefix = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'+variant_type+'_'+cancer_type+'_matrix'
 
 def main():
     uid = str(uuid.uuid4())[0:8] # unique id
     print('UID: ' +str(uid))
 
-    variant_type = 'somatic_MC3'; cancer_type = 'LUAD'; ppi_network='HuRI'; output_dir='results/score_matrices/'; output_filename_suffix = 'lcc_'+cancer_type.lower()    
-    ppi_matrix_prefix = '../ppi/code/results/'+ppi_network+'_converted_matrix'
-    genomics_matrix_prefix = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'+variant_type+'_'+cancer_type+'_matrix'
-      
     # get data (ppi_matrix and scores)
     ppi_matrix, ppi_matrix_index, extended_ppi_matrix_prefix, genomics_matrix, genomics_matrix_row_index, genomics_matrix_col_index = hp.get_ngr_inputs(genomics_matrix_prefix, ppi_matrix_prefix, genomics_matrix_transformed=True, largest_cc=True, ppi_cancer_type=cancer_type, matrix_normalization_method='insulated_diffusion')
     print('PPI matrix: {0}, Input matrix: {1}.\n'.format(ppi_matrix.shape, genomics_matrix.shape))

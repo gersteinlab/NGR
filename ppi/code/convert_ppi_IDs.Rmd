@@ -22,7 +22,7 @@ custom_processing_steps <- function(ppi_net, network_name){
 network_index <- 3 # 1 for HumanNet, 2 for STRING, etc.
 
 network_names <- c('HumanNetv2', 'STRING', 'HuRI')
-network_files <- paste('../', c('HumanNetv2-FunctionalGeneNetwork_[FN]_top_10perc_edges.tsv', 'STRING_9606.protein.links.notextmining.nodatabase.edgescore.800upwards.v11.0.txt', 'HuRI.tsv'), sep='')
+network_files <- paste('../', c('HumanNetv2-FunctionalGeneNetwork_[FN]_top_10perc_edges.tsv', 'STRING_9606.protein.links.edgescore.700upwards.v11.0.txt', 'HuRI.tsv'), sep='')
 network_header <- c(F, T, F)
 network_sep <- c('\t', ' ', '\t')
 network_nodename_types <- c('entrezgene_id', 'ensembl_peptide_id', 'ensembl_gene_id')

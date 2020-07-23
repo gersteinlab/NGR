@@ -1,0 +1,123 @@
+---
+title: "generate_tissue_dependency_lists.Rmd"
+author: "Hussein Mohsen"
+date: "7/23/2019"
+output: html_document
+---
+
+```{r}
+output_dir <- 'results/'
+
+all_tissues <- c('all', 'blood', 'kidney', 'leg', 'bone', 'arm', 'pancrea', 'uter', 'ovar', 'bone_marrow', 'lymph_node', 'head', 'neck', 'skin', 'thym', 'colo', 'rect', 'stomach', 'liver', 'lung', 'esophag', 'cervix', 'brain', 'bladder', 'testes', 'spinal', 'anus', 'peni', 'saliv', 'mouth', 'thyroid', 'intestine', 'muscle', 'heart', 'uterus', 'prosta', 'eye', 'vulva')
+selected_tissues <- c('all', 'bladder', 'breast', 'cervix', 'ovary', 'liver', 'colo', 'esophag', 'head|neck', 'kidney', 'lung', 'prosta', 'rect', 'stomach', 'thyroid')
+```
+
+
+```{r}
+depMap_files_dir <- '../dependency/'
+file_extension <- 'csv'
+
+depMap_from <- c('ADRENAL_CORTEX', 'HAEMATOPOIETIC_AND_LYMPHOID_TISSUE', 'URINARY_TRACT', 'BREAST', 'CERVIX', 'VULVA', 'BILIARY_TRACT', 'LARGE_INTESTINE', 'OESOPHAGUS', 'CENTRAL_NERVOUS_SYSTEM', 'SALIVARY_GLAND', 'UPPER_AERODIGESTIVE_TRACT', 'BONE', 'KIDNEY', 'LIVER', 'LUNG', 'PLEURA', 'AUTONOMIC_GANGLIA', 'PROSTATE', 'OVARY', 'PANCREAS', 'SOFT_TISSUE', 'THYROID', 'SKIN', 'STOMACH', 'ENDOMETRIUM', 'BLADDER', 'FIBROBLAST', 'GASTROINTESTINAL_TRACT', 'SMALL_INTESTINE', 'UVEA')
+
+depMap_to <- c('ADRENAL_CORTEX_brain', 'HAEMATOPOIETIC_AND_LYMPHOID_TISSUE_blood_lymph_node_bone_marrow', 'URINARY_TRACT_bladder', 'BREAST_breast', 'CERVIX_cervix', 'VULVA_vulva', 'BILIARY_TRACT_liver', 'LARGE_INTESTINE_intestine', 'OESOPHAGUS_esophag', 'CENTRAL_NERVOUS_SYSTEM_brain', 'SALIVARY_GLAND_saliv', 'UPPER_AERODIGESTIVE_TRACT_bone_esophag', 'BONE_bone', 'KIDNEY_kidney', 'LIVER_liver', 'LUNG_lung', 'PLEURA_lung', 'AUTONOMIC_GANGLIA_brain', 'PROSTATE_prostate', 'OVARY_ovary', 'PANCREAS_pancrea', 'SOFT_TISSUE_blood_brain_muscle_lymph_node', 'THYROID_thyroid', 'SKIN_skin', 'STOMACH_stomach', 'ENDOMETRIUM_uterus', 'BLADDER_bladder', 'FIBROBLAST_skin', 'GASTROINTESTINAL_TRACT_stomach', 'SMALL_INTESTINE_intestine', 'UVEA_eye')
+```
+
+```{r}
+# CRISPR Knockout file (Achilles_gene_effect.csv)
+# Each resulting depMap_data data frame has genes as columns and cell lines as cell lines with tissues being part of the cell line names)
+crispr_file_prefix <- 'Achilles_gene_effect'
+scores_filename <- paste(depMap_files_dir, crispr_file_prefix, '.', file_extension, sep='')
+
+cell_line_filename <- paste(depMap_files_dir, 'CCLE_annotations_curatedv3.csv', sep='')
+cell_line_data <- read.table(cell_line_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
+#cell_line_data <- cell_line_data[!is.na(cell_line_data$depMapID), ]
+```
+
+```{r}
+crispr_depMap_data <- read.table(scores_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
+cell_lines <- crispr_depMap_data[, 'X']
+crispr_depMap_data <- crispr_depMap_data[, 2:ncol(crispr_depMap_data)]
+dot_indices <- regexpr('\\.\\.', colnames(crispr_depMap_data)) # clean col names
+colnames(crispr_depMap_data) <- substr(colnames(crispr_depMap_data), 0, dot_indices-1) # remove dots and their inline text to have gene names
+
+# update cell line names to include tissue
+cell_line_data[, 'Tissue'] <- gsub(' ', '_', cell_line_data[, 'Tissue'])
+
+inds_of_tissue_cell_lines <- which(cell_lines %in% cell_line_data[, 'depMapID'])
+cell_lines[inds_of_tissue_cell_lines] <- paste(cell_lines[inds_of_tissue_cell_lines], cell_line_data[match(cell_lines[inds_of_tissue_cell_lines], cell_line_data[, 'depMapID']), 'Tissue'], sep='_')
+
+library(mgsub)
+cell_lines <- mgsub(cell_lines, depMap_from, depMap_to)
+
+rownames(crispr_depMap_data) <- cell_lines # example: ACH-000792_PANCREAS for cell lines with tissue values, ACH-001134 for others
+crispr_depMap_data[is.na(crispr_depMap_data)] <- 0
+```
+
+```{r}
+# RNAi file (D2_combined_gene_depMap_scores.csv)
+rnai_file_prefix <- 'D2_combined_gene_dep_scores' 
+scores_filename <- paste(depMap_files_dir, rnai_file_prefix, '.', file_extension, sep='')
+
+rnai_depMap_data <- read.table(scores_filename, header=T, row.names=NULL, quote="\"", stringsAsFactors=F, sep=',')
+genes <- rnai_depMap_data[, 'X']
+
+bracket_indices <- regexpr('\\(', genes)
+genes <- substr(genes, 0, bracket_indices-2) # remove brackets and their inline text to have gene names
+
+rnai_depMap_data <- rnai_depMap_data[, 2:ncol(rnai_depMap_data)]
+rownames(rnai_depMap_data) <- genes
+rnai_depMap_data <- t(rnai_depMap_data) # so that both data frames have genes as columns and rows as cell lines
+
+library(mgsub)
+rownames(rnai_depMap_data) <- mgsub(rownames(rnai_depMap_data), depMap_from, depMap_to)
+rnai_depMap_data[is.na(rnai_depMap_data)] <- 0
+```
+
+```{r}
+# update gene dependency lists and include cell line columns alongside resulting score
+dl_depMap_dataset <- 'crispr' # or rnai
+if(dl_depMap_dataset == 'crispr'){
+  dl_depMap_data <- crispr_depMap_data 
+  dl_depMap_file_prefix <- crispr_file_prefix
+} else{
+  dl_depMap_data <- rnai_depMap_data
+  dl_depMap_file_prefix <- rnai_file_prefix
+}
+
+dl_output_dir <- '../dependency/'
+for(t in selected_tissues){
+  tryCatch(
+    expr = {
+      print(paste('Working on tissue ', t, '...', sep=''))
+    
+      selected_dl_depMap_data <- dl_depMap_data
+
+      if(t != 'all'){
+          t_depMap_inds <- grep(t, rownames(selected_dl_depMap_data))
+          if(length(t_depMap_inds) > 0)
+            selected_dl_depMap_data <- selected_dl_depMap_data[t_depMap_inds, ]
+      }
+      
+      if(t == 'all' || length(t_depMap_inds) > 0){
+        selected_dl_depMap_data <- t(selected_dl_depMap_data)
+        dep_score <- apply(selected_dl_depMap_data, 1, mean)
+        selected_dl_depMap_data <- cbind(dep_score, selected_dl_depMap_data)
+          
+        # write file
+        dl_avgdep_filename <- paste(dl_output_dir, dl_depMap_file_prefix, '_', t, '.csv', sep='')
+        dl_avgdep_filename <- gsub('\\|', '-', dl_avgdep_filename)
+        
+        matrix_to_write <- cbind(rownames(selected_dl_depMap_data), selected_dl_depMap_data)
+        colnames(matrix_to_write)[1] <- 'gene'
+        
+        print(paste('Generating ', dl_avgdep_filename, '...', sep=''))
+        write.table(matrix_to_write, dl_avgdep_filename, row.names=F, col.names=T, quote=F, sep=',')
+      } else{
+        print(paste('Tissue ', t, ' had no cell lines.', sep=''))
+      }
+    }, error = function(e){
+      print(e)
+  })
+}
+```
+

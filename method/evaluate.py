@@ -2,10 +2,14 @@ import helper_functions as hp
 import evaluation_functions as eval
 
 def main():
-    # Mobility List Batch Generation
     uids_filename = 'results/score_matrices/uids.txt'
-    eval.generate_batch_gene_mobility_lists(uids_filename)
+    
+    # Mobility List Batch Generation
+    #eval.generate_batch_gene_mobility_lists(uids_filename)
 
+    # Hypergeometric test regults generation
+    eval.generate_batch_hypergemetric_pvalues(uids_filename)
+    
 main()
 
 
@@ -34,7 +38,7 @@ main()
 
 # A. Whole PPI
 variant_type = 'somatic_MC3'; cancer_type = 'BRCA'; ppi_network='HumanNetv2';
-gold_standard_file = '../gene_lists/code/results/score_matrices/cancerMine_both_depmap_both_values_mean_scores_breast_tissue.csv'
+gold_standard_file = '../gene_lists/code/results/gold_standard_lists/cancerMine_both_depmap_both_values_mean_scores_breast_tissue.csv'
 
 # load whole-ppi results
 uid = 'ab420746'; matrices_dir='results/score_matrices/lcc_whole_network/';

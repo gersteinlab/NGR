@@ -1,15 +1,25 @@
-# Select STRING information channels and calculate combined score (selected channels: all except text mining and database in their direct and homology-based forms):
+# (Obselete step: another STRING PPI used; see below) Select STRING information channels and calculate combined score (selected channels: all except text mining and database in their direct and homology-based forms):
 awk 'BEGIN{prior=0.041; feature_inds="1,2,3,4,5,6,7,8,9,10,11"; split(feature_inds, features, ",")} {combined_score = 1.0; interaction_str=""; for(i=1; i<=length(features); i++){if(i>2 && $features[i] > 0) {feature_val = (($features[i]/1000)-prior)/(1-prior); combined_score = combined_score * (1-feature_val)}; interaction_str = interaction_str $features[i] " "} if(FNR == 1){interaction_str = interaction_str "combined_score"} else{combined_score = 1 - combined_score; if(combined_score > 0){combined_score = combined_score + (prior * (1-combined_score)); combined_score = combined_score*1000}; interaction_str = interaction_str combined_score}; if(combined_score > 0){print interaction_str}}' 9606.protein.links.full.v11.0.txt > 9606.protein.links.full.notextmining.nodatabase.v11.0.txt
 
-# Sort STRING edges (optional):
+# (Obselete step: another STRING PPI used; see below) Sort STRING edges (optional):
 cat 9606.protein.links.full.notextmining.nodatabase.v11.0.txt | awk 'NR<2{print $0;next}{print $0| "sort -k 12,12nr"}' > temp.txt
 mv temp.txt 9606.protein.links.full.notextmining.nodatabase.v11.0.txt
 
-# Select high quality edges in STRING (combined_score > 800):
+# (Obselete step: another STRING PPI used; see below) Select high quality edges in STRING (combined_score > 800):
 awk '{if($12 > 800 || FNR == 1){print $0}}' 9606.protein.links.full.notextmining.nodatabase.v11.0.txt > 9606.protein.links.full.notextmining.nodatabase.edgescore.800upwards.v11.0.txt
 
-# Convert resulting STRING network into a edgelist file (with 3 columns)
+# (Obselete step: another STRING PPI used; see below) Convert resulting STRING network into a edgelist file (with 3 columns)
 awk '{print $1 " " $2 " " $12}' STRING_9606.protein.links.full.notextmining.nodatabase.edgescore.800upwards.v11.0.txt > STRING_9606.protein.links.notextmining.nodatabase.edgescore.800upwards.v11.0.txt
+
+# Select high quality edges in STRING (combined_score > 700)
+awk '{if($12 > 700 || FNR == 1){print $0}}' STRING_9606.protein.links.full.v11.0.txt > STRING_9606.protein.links.full.edgescore.700upwards.v11.0.txt
+
+# Convert resulting STRING network into a edgelist file (with 3 columns)
+awk '{print $1 " " $2 " " $12}' STRING_9606.protein.links.full.edgescore.700upwards.v11.0.txt > STRING_9606.protein.links.edgescore.700upwards.v11.0.txt
+
+Sort STRING edges (optional):
+cat STRING_9606.protein.links.edgescore.700upwards.v11.0.txt | awk 'NR<2{print $0;next}{print $0| "sort -k 12,12nr"}' > temp.txt
+mv temp.txt STRING_9606.protein.links.edgescore.700upwards.v11.0.txt
 
 # Select high quality edges (top 10%) in HumanNetv2:
 awk '{if(FNR < 37151){print $0}}' HumanNetv2-FunctionalGeneNetwork_\[FN\].tsv > HumanNetv2-FunctionalGeneNetwork_[FN]_top_10perc_edges.tsv
