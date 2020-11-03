@@ -1,0 +1,151 @@
+---
+title: "compare_with_other_methods_lists"
+output: html_document
+---
+
+```{r}
+# comapres upward mobility lists to a new list (often by another method) wrt DepMap info
+# upward mobility_df is usually an intersection_df with 4 cols: (depMap score, p_neg_score) for crispr and rnai
+compare_to_a_new_list <- function(upward_mobility_df, new_list_filename, ct_known_gene_list, depmap_dir){
+  print(paste(new_list_filename, ' Results:\n', sep=''))
+  new_list <- as.character(read.table(new_list_filename, sep=',', header=F, stringsAsFactors=F)$V1) # 1 column gene list files
+  print(length(new_list))
+  
+  new_list_no_known <- setdiff(new_list, ct_known_gene_list)
+  print(length(new_list_no_known))
+
+  new_method_depmap_df <- cbind(new_list_no_known, get_depmap_df(new_list_no_known, depmap_dir, 'crispr', ct), get_depmap_df(new_list_no_known, depmap_dir, 'rnai', ct))
+
+  print(summary(new_method_depmap_df[, 2:5]))
+  
+  return(new_method_depmap_df)
+}
+```
+
+```{r}
+library(Dict)
+
+other_methods_lists_dir <- 'gene_lists/other_methods_lists/'
+other_methods_files <- Dict$new(BRCA = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_BRCA_list.csv", sep=""),
+                                CESC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_CESC_list.csv", sep=""),
+                                CHOL = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_CHOL_list.csv", sep=""),
+                                COAD = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_COAD_list.csv", sep=""),
+                                ESCA = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_ESCA_list.csv", sep=""),
+                                HNSC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_HNSC_list.csv", sep=""),
+                                KICH = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_KICH_list.csv", sep=""),
+                                KIRC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_KIRC_list.csv", sep=""),
+                                KIRP = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_KIRP_list.csv", sep=""),
+                                LIHC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_LIHC_list.csv", sep=""),
+                                LUAD = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_LUAD_list.csv", sep=""),
+                                LUSC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_LUSC_list.csv", sep=""),
+                                PRAD = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_PRAD_list.csv", sep=""),
+                                READ = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_READ_list.csv", sep=""),
+                                STAD = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_STAD_list.csv", sep=""),
+                                THCA = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_THCA_list.csv", sep=""),
+                                UCEC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_UCEC_list.csv", sep=""))
+```
+
+```{r echo=FALSE}
+source('upward_mobility_shareable_functions.R')
+
+ppi_networks <- c('STRING', 'HumanNetv2')
+cancer_types <- c('BRCA', 'CESC', 'CHOL', 'COAD', 'ESCA', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LIHC', 'LUAD', 'LUSC', 'PRAD', 'STAD', 'THCA', 'UCEC', 'READ') # 'all' not in other method lists, READ has 0 genes after filtering Bailey et al genes out
+
+variant_type = 'somatic_MC3'
+
+  # Combine with CancerMine to give a bump to known cancer genes
+cancerMine_dir <- '../gene_lists/literature/'
+cancerMine_filename <- 'cancermine_collated_v24_May2020.tsv'
+cancerMine_dictionary_filename <- 'cancermine_dictionary_v24.tsv'
+
+#all_tissues <- c('all', 'blood', 'kidney', 'leg', 'bone', 'arm', 'pancrea', 'uter', 'ovar', 'bone_marrow', 'lymph_node', 'head', 'neck', 'skin', 'thym', 'colo', 'rect', 'stomach', 'liver', 'lung', 'esophag', 'cervix', 'brain', 'bladder', 'testes', 'spinal', 'anus', 'peni', 'saliv', 'mouth', 'thyroid', 'intestine', 'muscle', 'heart', 'uterus', 'prosta', 'eye', 'vulva', 'bile_duct')
+
+# tissues <- c('breast', 'lung', 'lung')
+
+input_dir <- 'mobility_lists/whole_lists/'
+output_dir <- 'mobility_lists/prioritized_lists/' # directory in which resulting lists are saved
+
+expr_dir <- 'tcga_results/'
+depmap_dir <- 'gene_lists/dependency/'
+```
+
+```{r}
+#depmap_min_df_all_genes <- calculate_depmap_min_df_all_genes(depmap_dir) # minumum crispr and rnai depscores for each gene in all cell lines (i.e. not only cancer type-specific ones)
+```
+
+```{r}
+Bailey_et_al_known_genes_file <- '../gene_lists/known_genes/Bailey_driver_gene_list.csv'
+Bailey_et_al_known_genes <- read.table(Bailey_et_al_known_genes_file , header=T, stringsAsFactors=F, sep=',')
+
+for(cti in 1:length(cancer_types)){
+  ct <- cancer_types[cti]
+  print(paste('==============Cancer type:', ct, sep=' '))
+  print('Upward Mobility Results:\n')
+  #tissue <- tissues[cti]
+  
+  #known_genes_file <- paste(paste('../gene_lists/known_genes/COSMIC_v90_membership', ct, variant_type, sep='_'), 'csv', sep='.')
+  #if(ct == 'all')
+  #  known_genes_file <- '../gene_lists/known_genes/COSMIC_v90_membership.csv'
+    
+  #ct_known_genes <- read.table(known_genes_file , header=T, stringsAsFactors=F, sep=',')
+  if(ct == 'all'){ # pancancer
+    ct_known_genes <- unique(Bailey_et_al_known_genes$Gene)
+      
+    all_upward_mobility_genes <- as.character(read.table('gene_lists/final_lists/all_mobility_genes_list.csv', stringsAsFactors=F, header=F)$V1) # final list of all upward mobility genes'
+    print(length(all_upward_mobility_genes))
+    all_upward_mobility_genes_no_known <- setdiff(all_upward_mobility_genes, unique(ct_known_genes))
+    print(length(all_upward_mobility_genes_no_known))
+    
+    intersection_df_no_known <- cbind(all_upward_mobility_genes_no_known, get_depmap_df(all_upward_mobility_genes_no_known, depmap_dir, 'crispr', ct), get_depmap_df(all_upward_mobility_genes_no_known, depmap_dir, 'rnai', ct))
+  } else{
+      ct_known_genes <- Bailey_et_al_known_genes[grepl(ct, Bailey_et_al_known_genes$Cancer), 'Gene']
+    
+      for(ppi_networki in 1:length(ppi_networks)){
+      ppi_network = ppi_networks[ppi_networki]
+  
+      mobility_df = read.table(paste(input_dir, paste(variant_type, ct, ppi_network, 'lcc', tolower(ct), 'mobility_list.csv', sep='_'), sep=''), header=F, col.names=c('gene', 'mobility_score', 'initial_rank', 'final_rank'), stringsAsFactors=F, sep=',')
+      
+      mobility_threshold <- 0.25 * nrow(mobility_df); final_rank_threshold <- 1000 # pick genes that jumped up 25%+ ranks and ended up in top 1000 list
+      upward_mobility_genes <- select_genes(mobility_df, mobility_score_threshold=mobility_threshold, final_rank_threshold=final_rank_threshold)
+      print(paste('Number of upward mobility genes [ ', ppi_network, ']:', nrow(upward_mobility_genes), sep=' '))
+  
+      upward_mobility_genes_dm <- cbind(get_depmap_df(upward_mobility_genes$gene, depmap_dir, 'crispr', ct), get_depmap_df(upward_mobility_genes$gene, depmap_dir, 'rnai', ct)) # avg cancer_type-specific depmap score and ratio of cell types in which the gene's depmap score is -ve, for both crispr and rnai
+      
+      #print(paste('Summary of DepMap scores in ', ppi_network, '\n', sep=''))
+      #print(summary(upward_mobility_genes_dm))
+  
+      upward_mobility_genes <- cbind(upward_mobility_genes, upward_mobility_genes_dm)
+      
+      #upward_mobility_genes_min_dm <- get_depmap_min_df(upward_mobility_genes$gene, depmap_min_df_all_genes) # minimum dp gene scores across all cell lines added
+      #upward_mobility_genes <- cbind(upward_mobility_genes, upward_mobility_genes_min_dm)
+  
+      # across-ppi intersection lists
+      processed_ppi_networks <- capture.output(cat(ppi_networks[1:ppi_networki], sep='-'))
+      if(ppi_networki == 1){
+        intersection_df_no_known <- upward_mobility_genes[, c(1, 5:ncol(upward_mobility_genes))]
+      } else{
+        intersection_row_inds_no_known <- match(setdiff(upward_mobility_genes$gene, ct_known_genes), intersection_df_no_known$gene)
+        intersection_row_inds_no_known <- intersection_row_inds_no_known[!is.na(intersection_row_inds_no_known)] # indices of intersecting genes
+  
+        intersection_df_no_known <- intersection_df_no_known[intersection_row_inds_no_known, ]
+        
+        print(paste('Number of intersecting upward mobility genes without known genes [ ', processed_ppi_networks, ']:', nrow(intersection_df_no_known), sep=' '))
+        
+#        intersection_df_no_known <- intersection_df_no_known[intersection_df_no_known$p_neg_score_crispr >= 0.5 | intersection_df_no_known$p_neg_score_rnai >= 0.5, ] # DepMap filtering
+#        print(paste('Number of intersecting upward mobility genes without known genes (After DepMap Filtering) [ ', processed_ppi_networks, ']:', nrow(intersection_df_no_known), sep=' '))
+        
+        print('Summary of DepMap scores in Intersections (After DepMap Filtering):\n')
+        t <- cbind(get_depmap_df(intersection_df_no_known$gene, depmap_dir, 'crispr', ct), get_depmap_df(intersection_df_no_known$gene, depmap_dir, 'rnai', ct)) # print Mann-Whitney results
+      }
+    }
+  }
+  
+  print(summary(intersection_df_no_known[, 2:5]))
+
+  # compare intersection_df_no_known with other methods' depmap dfs
+  ct_other_methods_files <- other_methods_files[ct]
+  for(ct_omf in ct_other_methods_files){
+    new_method_df <- compare_to_a_new_list(intersection_df_no_known, ct_omf, ct_known_genes, depmap_dir) # depmap df of new list
+  }
+}
+```

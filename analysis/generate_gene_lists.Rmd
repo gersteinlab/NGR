@@ -1,0 +1,69 @@
+---
+title: "generate_enrichment_results.Rmd"
+author: "Hussein Mohsen"
+date: "8/5/2020"
+output: html_document
+---
+
+```{r}
+cancer_types <- c('BRCA', 'CESC', 'CHOL', 'COAD', 'ESCA', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LIHC', 'LUAD', 'LUSC', 'PRAD', 'READ', 'STAD', 'THCA', 'UCEC')
+mobility_files_dir <- 'mobility_lists/prioritized_lists/'
+Bailey_et_al_file_dir <- '../gene_lists/known_genes/'
+initial_score_matrices_dir <- '../tcga/cortex_data/variant_data/annovar/results/matrix_results/' #here
+final_lists_dir <- 'gene_lists/final_lists/'
+```  
+
+```{r}
+# generate final mobility lists and bailey et al. based cancer type specific files
+Bailey_et_al_known_genes <- read.table(paste(Bailey_et_al_file_dir, 'Bailey_driver_gene_list.csv', sep=''), header=T, stringsAsFactors=F, sep=',')
+
+all_upward_mobility_genes <- c()
+for(j in 1:length(cancer_types)){
+  ct <- cancer_types[j]
+  
+  # Bailey et al./COSMIC membership
+  if(ct %in% c('COAD', 'READ')) # For COAD and READ, use COSMIC lists as Bailey et al. drivers are not available
+    driver_or_known_genes <- read.table(paste(final_lists_dir, paste('COSMIC','v90', 'membership', ct, 'somatic', 'MC3.csv', sep='_'), sep = ''), header=T, sep=',')[, 1]
+  else{
+    driver_or_known_genes <- Bailey_et_al_known_genes[Bailey_et_al_known_genes$Cancer == ct, 'Gene']
+    write.table(driver_or_known_genes, paste(final_lists_dir, paste(ct, 'Bailey_driver_gene_list.csv', sep='_'), sep=''), row.names=F, col.names=F, quote=F)
+  }
+
+  # final mobility list membersip
+  mobility_data <- read.table(paste(mobility_files_dir, paste('somatic', 'MC3', ct, 'STRING-HumanNetv2', 'lcc', tolower(ct), 'prioritized', 'mobility', 'list.csv', sep='_'), sep=''), header=T, sep=',')
+  mobility_data <- mobility_data[(mobility_data$p_neg_score_crispr >= 0.5 |  mobility_data$p_neg_score_rnai >= 0.5), 'gene'] # filter genes to keep intersecting ones between the two ppis with p_neg_score >= 0.5 for CRISPR or RNAi-based depmap scores
+  write.table(mobility_data, paste(final_lists_dir, paste('somatic', 'MC3', 'STRING-HumanNetv2', 'lcc', tolower(ct), 'final', 'mobility', 'list.csv', sep='_'), sep=''), row.names=F, col.names=F, quote=F)
+  
+  all_upward_mobility_genes <- c(all_upward_mobility_genes, as.vector(mobility_data))
+  print(paste(ct, 'Done.', sep=' '))
+
+  mobility_data <- data.frame(gene=mobility_data, membership=rep(1, length(mobility_data)))
+  colnames(mobility_data) <- c('gene', paste(ct, 'upward', 'mobility', sep='_'))
+  
+  driver_data <- data.frame(gene=driver_or_known_genes, membership=rep(1, length(driver_or_known_genes)))
+  colnames(driver_data) <- c('gene', paste(ct, 'driver', 'or', 'COSMIC', sep='_'))
+  
+  # initial score
+  initial_score_data <- t(read.table(paste(initial_score_matrices_dir, 'somatic_MC3_', ct, '_matrix_transformed.txt', sep=''), sep=' '))
+  initial_score_genes <- read.table(paste(initial_score_matrices_dir, 'somatic_MC3_', ct, '_matrix_gene_index.csv', sep=''), sep=' ', stringsAsFactors=F)
+  initial_score_data <- data.frame(gene=initial_score_genes$V1, score=rowMeans(initial_score_data))
+  colnames(initial_score_data) <- c('gene', paste(ct, 'initial', 'score', sep='_'))
+  
+  # gene membership df (mobility, driver/known membership, and initial scores per cancer type)
+  ct_membership_data <- merge(mobility_data, driver_data, all=T)
+  ct_membership_data <- merge(ct_membership_data, initial_score_data, all=T)
+  if(j == 1)
+    gene_membership_df <- ct_membership_data
+  else{
+    gene_membership_df <- merge(gene_membership_df, ct_membership_data, all=T)
+  }
+}
+
+# all upward mobility genes file
+all_upward_mobility_genes <- unique(all_upward_mobility_genes)
+write.table(all_upward_mobility_genes, paste(final_lists_dir, 'all_mobility_genes_list.csv'), row.names=F, col.names=F, quote=F)
+
+# gene membership matrix file used to filter genes when drawing networks
+gene_membership_df[is.na(gene_membership_df)] <- 0
+write.table(gene_membership_df, paste(final_lists_dir, 'gene_ct_upward_mobility_and_driver_or_known_membership.tsv', sep=''), col.names=T, row.names=F, quote=F, sep='\t')
+```

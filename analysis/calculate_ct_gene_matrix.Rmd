@@ -3,7 +3,7 @@ title: "calculate_ct_gene_matrix.Rmd"
 output: html_document
 ---
 
-```{r cars}
+```{r}
 cancer_types <- c('BRCA', 'CESC', 'CHOL', 'COAD', 'ESCA', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LIHC', 'LUAD', 'LUSC', 'PRAD', 'READ', 'STAD', 'THCA', 'UCEC')
 lists_dir <- 'mobility_lists/prioritized_lists/'
 all_genes <- c()
@@ -43,7 +43,7 @@ heatmap(ct_gene_dm, scale='none', col=colorRampPalette(brewer.pal(9, 'Blues'))(2
 ```{r}
 # Circos data: generate band data used in karyotype files; heatmap data used in, well, heatmaps
 
-# multicancer data
+# multicancer heatmap data (from which labels are also generated later easily using awk)
 library(reshape)
 
 ct_specific_genes <- ct_gene_df$gene[which(rowSums((ct_gene_df[, 2:ncol(ct_gene_df)] > 0)) == 1)]
@@ -56,7 +56,6 @@ ordered_multicancer_genes <- rownames(multicancer_ct_gene_dm)[rev(multicancer_he
 multicancer_chr_start <- seq(0, (length(ordered_multicancer_genes)-1)*100, 100); multicancer_chr_end <- multicancer_chr_start + 100
 multicancer_bands <- data.frame(band=rep("band", length(ordered_multicancer_genes)), hs1=rep("hs1", length(ordered_multicancer_genes)), gene1=ordered_multicancer_genes, gene2=ordered_multicancer_genes, start=multicancer_chr_start, end=multicancer_chr_end, color=rep("green", length(ordered_multicancer_genes)))
 
-# multicancer heatmap
 ordered_cancer_types <- colnames(multicancer_ct_gene_dm)[multicancer_heatmap$colInd]
 multicancer_ct_gene_dm <- multicancer_ct_gene_dm[ordered_multicancer_genes, ordered_cancer_types] # genes and cancer types in matrix will be in same order as in heatmap
 melted_multicancer_ct_gene_dm <- melt(multicancer_ct_gene_dm)
@@ -71,5 +70,103 @@ for(i in 1:length(ordered_cancer_types)){
 write.table(ct_circos_heatmap_data, paste('heatmap.ct.', i, '.txt', sep=''), col.names=F, row.names=F, quote=F, sep=' ')
   print(paste('Multicancer heatmap data for ', i, ':', ct, 'done', sep=' '))
 }
+```
 
+```{r}
+# cancer type-specific circos label data
+ct_specific_genes <- as.vector(ct_specific_genes)
+ct_specific_label_data <- NA
+for(i in 1:length(ordered_cancer_types)){
+  ct <- ordered_cancer_types[i]
+  current_ct_specific_genes <- sapply(ct_specific_genes, FUN=function(x, ct_gene_dm, ct){if( rowSums(ct_gene_dm > 0)[x] == 1 & ct_gene_dm[x, ct] > 0) return(x)}, ct_gene_dm, ct)
+  current_ct_specific_genes <- unlist(current_ct_specific_genes[!sapply(current_ct_specific_genes, is.null)])
+  n_ct_specific_genes <- length(current_ct_specific_genes)
+  print(n_ct_specific_genes)
+  print(ct)
+  ct_specific_label_region_start <- seq(0, (n_ct_specific_genes-1)*100, 100)
+  ct_specific_label_region_end <- ct_specific_label_region_start + 100
+  current_ct_label_data <- data.frame(chr_name = rep(paste('hs', (i+1), sep=''), n_ct_specific_genes), start=ct_specific_label_region_start, end=ct_specific_label_region_end, current_ct_specific_genes)
+  
+  if(i == 1)
+    ct_specific_label_data <- current_ct_label_data
+  else
+    ct_specific_label_data <- rbind(ct_specific_label_data, current_ct_label_data)
+}
+
+# write label data file
+write.table(ct_specific_label_data, 'labels.upward.mobility.genes.ct_specific.txt', row.names=F, col.names=F, quote=F, sep=' ')
+```
+
+```{r}
+# Circos histogram data (multicancer + cancer specific) - percentile ranks of genes
+# find percentile for each gene in each cancer type, in each ppi (as long as it appears); average across cancer type(s) within each ppi, then average final lists across ppis
+ppi_nets <- c('STRING', 'HumanNetv2')
+mobility_files_dir = 'mobility_lists/prioritized_lists/'
+upward_mobility_genes <- ct_gene_df$gene # multicancer and cancer specific upward mobility genes
+  
+STRING_percentiles <- rep(0, length(upward_mobility_genes))
+STRING_counts <- rep(0, length(upward_mobility_genes)) # used to calculate average values
+
+HumanNetv2_percentiles <- rep(0, length(upward_mobility_genes))
+HumanNetv2_counts <- rep(0, length(upward_mobility_genes))
+
+for(i in 1:length(ppi_nets)){
+  ppi_net <- ppi_nets[i]
+  
+  for(j in 1:length(ordered_cancer_types)){
+    ct <- ordered_cancer_types[j]
+    mobility_list_filename <- paste(mobility_files_dir, paste('somatic', 'MC3', ct, ppi_net, 'lcc', tolower(ct), 'prioritized', 'mobility', 'list.csv', sep='_'), sep='')
+    mobility_data <- read.table(mobility_list_filename, header=T, sep=',')
+    mobility_data <- mobility_data[(mobility_data$p_neg_score_crispr >= 0.5 |  mobility_data$p_neg_score_rnai >= 0.5) & (mobility_data$gene %in% upward_mobility_genes), c('gene', 'final_rank')] # filter genes to keep intersecting ones between the two ppis with p_neg_score >= 0.5 for CRISPR or RNAi-based depmap scores
+    
+    mobility_data$percentile <- rev(((1:nrow(mobility_data))/nrow(mobility_data)) * 100)
+    
+    upward_mobility_genes_percentiles <- mobility_data$percentile[match(upward_mobility_genes, mobility_data$gene)]
+    upward_mobility_genes_percentiles[is.na(upward_mobility_genes_percentiles)] <- 0
+    
+    if(ppi_net == 'STRING'){
+      STRING_percentiles <- STRING_percentiles + upward_mobility_genes_percentiles
+      STRING_counts <- STRING_counts + (upward_mobility_genes_percentiles > 0)
+    } else if(ppi_net == 'HumanNetv2'){
+      HumanNetv2_percentiles <- HumanNetv2_percentiles + upward_mobility_genes_percentiles
+      HumanNetv2_counts <- HumanNetv2_counts + (upward_mobility_genes_percentiles > 0)
+    }
+    
+    print(paste('Percentile calculation for', ct, 'and', ppi_net, 'done.', sep=' '))
+  }
+}
+
+upward_mobility_genes_mean_percentiles <- data.frame(gene=as.vector(upward_mobility_genes), mean_percentile=(((STRING_percentiles / STRING_counts) + (HumanNetv2_percentiles / HumanNetv2_counts)) / 2)) # to be used as histogram scores
+row.names(upward_mobility_genes_mean_percentiles) <- upward_mobility_genes_mean_percentiles$gene
+
+# generate histogram circos data file
+# multicancer genes first
+multicancer_genes_mean_percentiles <- upward_mobility_genes_mean_percentiles[ordered_multicancer_genes, ]
+n_multicancer_genes <- length(ordered_multicancer_genes)
+multicancer_histogram_region_start <- seq(0, (n_multicancer_genes-1)*100, 100)
+multicancer_histogram_region_end <- multicancer_histogram_region_start + 100
+  
+multicancer_histogram_data <- data.frame(chr_name = rep('hs1', n_multicancer_genes), start=multicancer_histogram_region_start, end=multicancer_histogram_region_end, mean_percentile=multicancer_genes_mean_percentiles$mean_percentile)
+
+# ct specific genes
+ct_specific_histogram_data <- NA
+for(i in 1:length(ordered_cancer_types)){
+  ct <- ordered_cancer_types[i]
+  current_ct_specific_genes <- sapply(ct_specific_genes, FUN=function(x, ct_gene_dm, ct){if( rowSums(ct_gene_dm > 0)[x] == 1 & ct_gene_dm[x, ct] > 0) return(x)}, ct_gene_dm, ct)
+  current_ct_specific_genes <- unlist(current_ct_specific_genes[!sapply(current_ct_specific_genes, is.null)])
+  n_ct_specific_genes <- length(current_ct_specific_genes)
+  current_ct_specific_genes_mean_percentiles <- upward_mobility_genes_mean_percentiles[current_ct_specific_genes, ]
+  
+  ct_specific_histogram_region_start <- seq(0, (n_ct_specific_genes-1)*100, 100)
+  ct_specific_histogram_region_end <- ct_specific_histogram_region_start + 100
+  current_ct_histogram_data <- data.frame(chr_name = rep(paste('hs', (i+1), sep=''), n_ct_specific_genes), start=ct_specific_histogram_region_start, end=ct_specific_histogram_region_end, mean_percentile=current_ct_specific_genes_mean_percentiles$mean_percentile)
+  
+  if(i == 1)
+    ct_specific_histogram_data <- current_ct_histogram_data
+  else
+    ct_specific_histogram_data <- rbind(ct_specific_histogram_data, current_ct_histogram_data)
+}
+
+upward_mobility_genes_histogram_data <- rbind(multicancer_histogram_data, ct_specific_histogram_data) # combine both to generate final file for all upward mobility genes
+write.table(upward_mobility_genes_histogram_data, 'histogram.upward.mobility.genes.txt', row.names=F, col.names=F, quote=F, sep=' ')
 ```

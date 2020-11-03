@@ -16,3 +16,5 @@ awk 'BEGIN{print "gene,list_membership_Fr”} {for(i=1; i<=NF; i++){print $i",1"
 
 # To generate cancer-specific COSMIC lists, 
 # locally run commands as per COSMIC_cancer_type_lists_commands.txt
+
+# Directory final_lists include lists of upward mobility genes, after filtering wrt 50% negative threshold in CRISPR and RNAi, and lists of driver genes per Bailey_et_al. These lists are used in enrichment. To generate them, run blocks of generate_gene_lists.Rmd in analysis/

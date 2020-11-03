@@ -40,3 +40,4 @@ To generate PPI matrices to be used by the Python script of the method, run sbat
 
 For result generation, see method/README.txt
 
+For method comparison and figure generation (figures or data related to Circos), see analysis/README.txt
