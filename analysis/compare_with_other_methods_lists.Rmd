@@ -6,7 +6,7 @@ output: html_document
 ```{r}
 # comapres upward mobility lists to a new list (often by another method) wrt DepMap info
 # upward mobility_df is usually an intersection_df with 4 cols: (depMap score, p_neg_score) for crispr and rnai
-compare_to_a_new_list <- function(upward_mobility_df, new_list_filename, ct_known_gene_list, depmap_dir){
+compare_to_a_new_list <- function(new_list_filename, ct_known_gene_list, depmap_dir){
   print(paste(new_list_filename, ' Results:\n', sep=''))
   new_list <- as.character(read.table(new_list_filename, sep=',', header=F, stringsAsFactors=F)$V1) # 1 column gene list files
   print(length(new_list))
@@ -26,30 +26,31 @@ compare_to_a_new_list <- function(upward_mobility_df, new_list_filename, ct_know
 library(Dict)
 
 other_methods_lists_dir <- 'gene_lists/other_methods_lists/'
-other_methods_files <- Dict$new(BRCA = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_BRCA_list.csv", sep=""),
-                                CESC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_CESC_list.csv", sep=""),
-                                CHOL = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_CHOL_list.csv", sep=""),
-                                COAD = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_COAD_list.csv", sep=""),
-                                ESCA = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_ESCA_list.csv", sep=""),
-                                HNSC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_HNSC_list.csv", sep=""),
-                                KICH = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_KICH_list.csv", sep=""),
-                                KIRC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_KIRC_list.csv", sep=""),
-                                KIRP = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_KIRP_list.csv", sep=""),
-                                LIHC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_LIHC_list.csv", sep=""),
-                                LUAD = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_LUAD_list.csv", sep=""),
-                                LUSC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_LUSC_list.csv", sep=""),
-                                PRAD = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_PRAD_list.csv", sep=""),
-                                READ = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_READ_list.csv", sep=""),
-                                STAD = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_STAD_list.csv", sep=""),
-                                THCA = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_THCA_list.csv", sep=""),
-                                UCEC = paste(other_methods_lists_dir, c("Katz-known-genes-w-weights"), "_UCEC_list.csv", sep=""))
+other_methods_files <- Dict$new(all = paste(other_methods_lists_dir, c("nCOP", "HHotNet-paper"), "_all_list.csv", sep=""),
+                                BRCA = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "Ruffalo", "TIEDIE-linkers-Fig4", "TIEDIE-linkers-Fig5"), "_BRCA_list.csv", sep=""),
+                                CESC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_CESC_list.csv", sep=""),
+                                CHOL= paste(other_methods_lists_dir, c(""), "_CHOL_list.csv", sep=""),
+                                COAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_COAD_list.csv", sep=""),
+                                ESCA = paste(other_methods_lists_dir, c("HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_ESCA_list.csv", sep=""),
+                                HNSC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING"), "_HNSC_list.csv", sep=""),
+                                KICH = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING"), "_KICH_list.csv", sep=""),
+                                KIRC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_KIRC_list.csv", sep=""),
+                                KIRP = paste(other_methods_lists_dir, c("nCOP"), "_KIRP_list.csv", sep=""),
+                                LIHC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_LIHC_list.csv", sep=""),
+                                LUAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_LUAD_list.csv", sep=""),
+                                LUSC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_LUSC_list.csv", sep=""),
+                                PRAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_PRAD_list.csv", sep=""),
+                                READ = paste(other_methods_lists_dir, c("HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_READ_list.csv", sep=""),
+                                STAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING"), "_STAD_list.csv", sep=""),
+                                THCA = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING"), "_THCA_list.csv", sep=""),
+                                UCEC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_UCEC_list.csv", sep="")) # READ nCOP has 0 genes after filtering Bailey et al genes out so it was removed
 ```
 
 ```{r echo=FALSE}
 source('upward_mobility_shareable_functions.R')
 
 ppi_networks <- c('STRING', 'HumanNetv2')
-cancer_types <- c('BRCA', 'CESC', 'CHOL', 'COAD', 'ESCA', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LIHC', 'LUAD', 'LUSC', 'PRAD', 'STAD', 'THCA', 'UCEC', 'READ') # 'all' not in other method lists, READ has 0 genes after filtering Bailey et al genes out
+cancer_types <- c('all', 'BRCA', 'CESC', 'COAD', 'ESCA', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LIHC', 'LUAD', 'LUSC', 'PRAD', 'READ', 'STAD', 'THCA', 'UCEC') # no other lists available for CHOL
 
 variant_type = 'somatic_MC3'
 
@@ -98,7 +99,10 @@ for(cti in 1:length(cancer_types)){
     
     intersection_df_no_known <- cbind(all_upward_mobility_genes_no_known, get_depmap_df(all_upward_mobility_genes_no_known, depmap_dir, 'crispr', ct), get_depmap_df(all_upward_mobility_genes_no_known, depmap_dir, 'rnai', ct))
   } else{
-      ct_known_genes <- Bailey_et_al_known_genes[grepl(ct, Bailey_et_al_known_genes$Cancer), 'Gene']
+      if(ct %in% c('COAD', 'READ'))
+        ct_known_genes <- as.character(read.table(paste('gene_lists/final_lists/', 'COSMIC_v90_membership_', ct, '_somatic_MC3.csv', sep=''), sep=',', stringsAsFactors=F, header=T)[, 1])
+      else
+        ct_known_genes <- Bailey_et_al_known_genes[grepl(ct, Bailey_et_al_known_genes$Cancer), 'Gene']
     
       for(ppi_networki in 1:length(ppi_networks)){
       ppi_network = ppi_networks[ppi_networki]
@@ -131,8 +135,8 @@ for(cti in 1:length(cancer_types)){
         
         print(paste('Number of intersecting upward mobility genes without known genes [ ', processed_ppi_networks, ']:', nrow(intersection_df_no_known), sep=' '))
         
-#        intersection_df_no_known <- intersection_df_no_known[intersection_df_no_known$p_neg_score_crispr >= 0.5 | intersection_df_no_known$p_neg_score_rnai >= 0.5, ] # DepMap filtering
-#        print(paste('Number of intersecting upward mobility genes without known genes (After DepMap Filtering) [ ', processed_ppi_networks, ']:', nrow(intersection_df_no_known), sep=' '))
+        intersection_df_no_known <- intersection_df_no_known[intersection_df_no_known$p_neg_score_crispr >= 0.5 | intersection_df_no_known$p_neg_score_rnai >= 0.5, ] # DepMap filtering
+        print(paste('Number of intersecting upward mobility genes without known genes (After DepMap Filtering) [ ', processed_ppi_networks, ']:', nrow(intersection_df_no_known), sep=' '))
         
         print('Summary of DepMap scores in Intersections (After DepMap Filtering):\n')
         t <- cbind(get_depmap_df(intersection_df_no_known$gene, depmap_dir, 'crispr', ct), get_depmap_df(intersection_df_no_known$gene, depmap_dir, 'rnai', ct)) # print Mann-Whitney results
@@ -145,7 +149,7 @@ for(cti in 1:length(cancer_types)){
   # compare intersection_df_no_known with other methods' depmap dfs
   ct_other_methods_files <- other_methods_files[ct]
   for(ct_omf in ct_other_methods_files){
-    new_method_df <- compare_to_a_new_list(intersection_df_no_known, ct_omf, ct_known_genes, depmap_dir) # depmap df of new list
+    new_method_df <- compare_to_a_new_list(ct_omf, ct_known_genes, depmap_dir) # depmap df of new list
   }
 }
 ```
