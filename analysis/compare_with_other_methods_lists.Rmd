@@ -3,7 +3,11 @@ title: "compare_with_other_methods_lists"
 output: html_document
 ---
 
+# A: comparisons with other methods B: (bottom of the script) visualization section
+
 ```{r}
+# A
+
 # comapres upward mobility lists to a new list (often by another method) wrt DepMap info
 # upward mobility_df is usually an intersection_df with 4 cols: (depMap score, p_neg_score) for crispr and rnai
 compare_to_a_new_list <- function(new_list_filename, ct_known_gene_list, depmap_dir){
@@ -40,7 +44,7 @@ other_methods_files <- Dict$new(all = paste(other_methods_lists_dir, c("nCOP", "
                                 LUAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_LUAD_list.csv", sep=""),
                                 LUSC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_LUSC_list.csv", sep=""),
                                 PRAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_PRAD_list.csv", sep=""),
-                                READ = paste(other_methods_lists_dir, c("HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_READ_list.csv", sep=""),
+                                READ = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_READ_list.csv", sep=""),
                                 STAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING"), "_STAD_list.csv", sep=""),
                                 THCA = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING"), "_THCA_list.csv", sep=""),
                                 UCEC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_UCEC_list.csv", sep="")) # READ nCOP has 0 genes after filtering Bailey et al genes out so it was removed
@@ -152,4 +156,44 @@ for(cti in 1:length(cancer_types)){
     new_method_df <- compare_to_a_new_list(ct_omf, ct_known_genes, depmap_dir) # depmap df of new list
   }
 }
+```
+
+```{r}
+# B: visualization
+
+library(ggplot2)
+library(ggpubr)
+
+results_filename <- 'other_methods_results/other_methods_results.csv'
+results <- read.table(results_filename, header=T, sep=',', stringsAsFactors=F, fill=T)
+
+results$Method <- factor(results$Method, levels=c('NGR', 'HHotNet-consensus', 'HHotNet-LC', 'HHotNet-all', 'nCOP')) # reorder legend labels
+results$Stripe <- mapvalues(results$Cancer_type, unique(results$Cancer_type), rep(c('#FFFFFF', '#E4E4E4'), length(unique(results$Cancer_type))/2)) # stripes
+rect_start <- seq(0, 1*15, 1)+0.5; rect_end <- seq(1, 1*16, 1)+0.5
+results$rect_start <- as.numeric(mapvalues(results$Cancer_type, unique(results$Cancer_type), rect_start))
+results$rect_end <- as.numeric(mapvalues(results$Cancer_type, unique(results$Cancer_type), rect_end))
+
+plots = list()
+Metric_values <- c('Mean', 'Median_Percentage')
+yaxis_label <- c('Mean DepMap Score (LogFC)', 'Cell Lines with \n -ve DepMap Score (%)')
+
+for(i in 1:length(Metric_values)){
+  mv <- Metric_values[i]
+  temp_results <- results[results$Metric == mv, ]
+  
+  if(mv == 'Median_Percentage')
+    temp_results$Value <- (temp_results$Value * 100)
+    
+  plots[[i]] <- (ggplot(temp_results, aes(fill=Method, width=0.75)) + 
+    geom_rect(fill=temp_results$Stripe, xmin=temp_results$rect_start, xmax=temp_results$rect_end, ymin=rep(-Inf, nrow(temp_results)), ymax=rep(Inf, nrow(temp_results)), alpha = 0.5) +
+    geom_bar(aes(y=Value, x=Cancer_type), position=position_dodge2(width = 0.75, preserve = 'single'), stat="identity") +
+    facet_grid(cols=vars(Screening_type)) +
+    xlab('') +
+    ylab(yaxis_label[i]) +
+    scale_fill_manual(values = c('NGR' = 'darkgreen', 'HHotNet-consensus' = 'navyblue', 'HHotNet-LC' = 'blue2', 'HHotNet-all' = 'skyblue1', 'nCOP' = 'burlywood2')) +
+    theme(panel.grid=element_blank(), panel.background=element_rect(fill='white'), axis.ticks.x=element_blank(), axis.title.y=element_text(size=8), axis.text.y=element_text(size=6), axis.text.x=element_text(size=6, vjust=0.5, face='bold', angle=90), legend.position='none'))
+}
+
+ggarrange(plotlist=plots, nrow=2, ncol=1) %>%
+  ggexport(filename='Fig_method_comparison_results_ggarrange.pdf')
 ```

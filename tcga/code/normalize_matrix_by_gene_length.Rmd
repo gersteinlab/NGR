@@ -15,7 +15,7 @@ colnames(gene_lengths) <- c('gene', 'length')
 ```
 
 ```{r}
-# discretize matrix (raw values of 1 remains as is; raw values v > 1: (a) normalized v < normalized 50th percentile -> 1 (b) 50th percentile < normalized v <= 75th percentile -> 2; 75th percentile < normalized v <= 90th percentile -> 3; 90th percentile < normalized v -> 4)
+# discretize matrix (raw values of 1 remains as is; raw values v > 1: (a) normalized v < normalized 50th percentile -> 1 (b) 50th percentile < normalized v <= 75th percentile -> 2; 75th percentile < normalized v <= 70th percentile -> 3; 90th percentile < normalized v -> 4)
 transform_vector_values <- function(matrix, normalized_matrix){
   qs <- c(0, quantile(normalized_matrix[normalized_matrix != 0], c(0.5, 0.7, 0.9)), max(normalized_matrix))
   m <- as.data.frame(apply(normalized_matrix, 2, .bincode, qs))

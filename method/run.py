@@ -16,8 +16,8 @@ parser.add_argument("--ct", help="cancer type")
 parser.add_argument("--ppi", help="ppi network")
 args = parser.parse_args()
 
-cancer_type = 'LUSC' 
-ppi_network='STRING'
+cancer_type = 'LUAD' 
+ppi_network='HumanNetv2'
 
 if args.ct:
     cancer_type = args.ct
@@ -50,7 +50,7 @@ def main():
     #ppi_matrix = hp.normalize_matrix(ppi_matrix, ppi_matrix_prefix+'_'+output_filename_suffix, normalization='insulated_diffusion') # normalize matrix after adding new edges
     '''
     
-    # run method
+    # run method    
     ngr_score_matrix = ngr.run(X=genomics_matrix, W=ppi_matrix)
     pickle.dump(ngr_score_matrix, open('_'.join([output_dir+variant_type, cancer_type, ppi_network, output_filename_suffix, uid, 'score_matrix.pkl']), 'wb'))
  

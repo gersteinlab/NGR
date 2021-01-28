@@ -5,10 +5,10 @@ def main():
     uids_filename = 'results/score_matrices/uids.txt'
     
     # Mobility List Batch Generation
-    #eval.generate_batch_gene_mobility_lists(uids_filename)
+    eval.generate_batch_gene_mobility_lists(uids_filename)
 
     # Hypergeometric test regults generation
-    eval.generate_batch_hypergemetric_pvalues(uids_filename)
+    #eval.generate_batch_hypergemetric_pvalues(uids_filename)
     
 main()
 
