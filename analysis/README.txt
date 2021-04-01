@@ -1,12 +1,12 @@
 # To generate final list details used in the final Google sheet, run mobility_lists_analysis.Rmd
 
-# To generate preliminary heatmap and circos data, run calculate_ct_gene_matrix.Rmd
+# To generate heatmap and circos data, run calculate_ct_gene_matrix.Rmd
 
 # To generate the heatmaps of enrichment analysis, run generate_gene_lists.Rmd then generate_enrichment_heatmaps.Rmd
 
 # To generate the (final mobility list + driver or COSMIC) gene membership (+ initial score before diffusion) matrix used in creating ppi analysis figure, run generate_gene_lists.Rmd
 
-# To generate other methods lists (Hierarchical HotNet and Katz), run HHotNet/NGR_related/NGR_parallel.sh and generate_other_methods_lists.pynb
+# To generate other methods lists (FDRnet, Hierarchical HotNet and Katz), run sbatch dsq-FDRnet_NGR_jobs-2021-03-30.sh, sbatch dsq-HHotNet_NGR_jobs-2020-11-05.sh and generate_other_methods_lists.pynb
 
 # To compare NGR lists to other methods lists (generated and manually curated ones), run compare_with_other_methods_lists.Rmd
 

@@ -51,7 +51,7 @@ def main():
     '''
     
     # run method    
-    ngr_score_matrix = ngr.run(X=genomics_matrix, W=ppi_matrix)
+    ngr_score_matrix = ngr.run(M=genomics_matrix, W=ppi_matrix)
     pickle.dump(ngr_score_matrix, open('_'.join([output_dir+variant_type, cancer_type, ppi_network, output_filename_suffix, uid, 'score_matrix.pkl']), 'wb'))
  
     '''

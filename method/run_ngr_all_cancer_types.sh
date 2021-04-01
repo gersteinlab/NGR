@@ -2,10 +2,10 @@
 
 #SBATCH --partition=pi_gerstein,general
 #SBATCH --job-name=ngr_all_cancer_types
-#SBATCH --mem=45GB
+#SBATCH --mem=55GB
 #SBATCH --time=6-23:59:59
 
-declare -a cancer_types=('BLCA' 'CESC' 'CHOL' 'COAD' 'ESCA' 'HNSC' 'KICH' 'KIRC' 'KIRP' 'LIHC' 'PRAD' 'READ' 'STAD' 'THCA' 'UCEC'); # 'BRCA' 'LUAD' 'LUSC'
+declare -a cancer_types=('BRCA' 'CESC' 'COAD' 'HNSC' 'KIRC' 'KIRP' 'LIHC' 'LUAD' 'LUSC' 'PRAD' 'STAD' 'THCA' 'UCEC' 'CHOL' 'KICH' 'ESCA' 'READ') 
 declare -a ppi_networks=('STRING' 'HumanNetv2');
 
 date

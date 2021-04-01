@@ -2,7 +2,7 @@ import numpy as np
 import scipy.stats as st
 from scipy.spatial import distance
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, precision_score, recall_score, precision_recall_curve, auc
-from scipy.stats import hypergeom
+from scipy.stats import hypergeom, rankdata
 
 import helper_functions as hp
 from scipy.constants.codata import precision
@@ -92,9 +92,9 @@ def compare_lists(ranked_score_lists, gold_standard_file, list_names, cancer_typ
             elif cm == 'Hypergeom_test': # hypergeometric enrichment test
                 known_genes_file = '../gene_lists/known_genes/COSMIC_v90_membership.csv'
                 known_genes = np.genfromtxt(known_genes_file, delimiter=',', skip_header=1, dtype='U25,i4', names=('gene','score'))
-                
-                S = 1000 #int(0.025 * N) # sample size
-                
+
+                S = int(0.1 * N) #int(0.025 * N) # sample size
+ 
                 sample_common_known_genes = np.intersect1d(known_genes['gene'], ranked_scores[id_colname][0:S])
                 x = len(sample_common_known_genes) # number of "successes" in the sample of size N
 
@@ -113,7 +113,7 @@ def compare_lists(ranked_score_lists, gold_standard_file, list_names, cancer_typ
 
 ## EVALUATION FUNCTIONS:
 
-# MOBILITY LIST FUNCITONS
+# MOBILITY LIST FUNCTIONS
 # generated mobility lists across variant types, cancer types, ppis and ppi_levels
 def generate_batch_gene_mobility_lists(uids_filename):
     matrices_dir = 'results/score_matrices/'
@@ -152,16 +152,9 @@ def generate_batch_gene_mobility_lists(uids_filename):
 # generates lists sorted in increasing order of mobility: difference between initial and post-diffusion rank
 # values are -ve (for upward mobility) and +ve (downward); upward 'passenger' genes are of more interest
 def generate_gene_mobility_list(initial_matrix, ngr_matrix, gene_index):
-    initial_scores_order = np.flip(np.argsort(np.mean(initial_matrix, axis=1)))
-    ngr_scores_order = np.flip(np.argsort(np.mean(ngr_matrix, axis=1)))
-
-    initial_ranks = np.zeros(initial_scores_order.shape)
-    ngr_ranks = np.zeros(ngr_scores_order.shape)
+    initial_ranks = rankdata(-np.mean(initial_matrix, axis=1), method='min')
+    ngr_ranks = rankdata(-np.mean(ngr_matrix, axis=1), method='min')
     
-    for i in range(len(initial_scores_order)):
-        initial_ranks[initial_scores_order[i]] = i # rank of each gene in a would-be sorted list
-        ngr_ranks[ngr_scores_order[i]] = i
-        
     mobility_score = initial_ranks - ngr_ranks # mobility is the different in ranks between initial and ngr list
     
     mobility_list = np.array(list(zip(gene_index, mobility_score, initial_ranks, ngr_ranks)), dtype=[('gene', 'U25'), ('mobility_score', 'i4'), ('initial_rank', 'i4'), ('ngr_rank', 'i4')])
