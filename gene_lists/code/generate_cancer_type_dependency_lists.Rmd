@@ -53,7 +53,7 @@ rnai_depMap_data[is.na(rnai_depMap_data)] <- 0
 ```
 
 ```{r}
-# Supdate gene dependency lists and include cell line columns alongside resulting score
+# update gene dependency lists and include cell line columns alongside resulting score
 dl_depMap_dataset <- 'crispr' # or rnai
 if(dl_depMap_dataset == 'crispr'){
   dl_depMap_data <- crispr_depMap_data 

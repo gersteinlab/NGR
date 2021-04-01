@@ -7,18 +7,15 @@ output: html_document
 source('upward_mobility_shareable_functions.R')
 
 ppi_networks <- c('STRING', 'HumanNetv2')
-cancer_types <- c('BRCA') #, 'CESC', 'CHOL') #, 'COAD', 'ESCA', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LIHC', 'LUAD', 'LUSC', 'PRAD', 'READ', 'STAD', 'THCA', 'UCEC')
+cancer_types <- c('BRCA', 'CESC', 'CHOL', 'COAD', 'ESCA', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LIHC', 'LUAD', 'LUSC', 'PRAD', 'READ', 'STAD', 'THCA', 'UCEC') # 'all' # no other lists available for CHOL
+beta_values <- c(0.25, 0.2, 0.05, 0.25, 0.15, 0.25, 0.05, 0.2, 0.2, 0.2, 0.25, 0.25, 0.25, 0.15, 0.25, 0.05, 0.25)
 
 variant_type = 'somatic_MC3'
 
-  # Combine with CancerMine to give a bump to known cancer genes
+# Combine with CancerMine to give a bump to known cancer genes
 cancerMine_dir <- '../gene_lists/literature/'
 cancerMine_filename <- 'cancermine_collated_v24_May2020.tsv'
 cancerMine_dictionary_filename <- 'cancermine_dictionary_v24.tsv'
-
-#all_tissues <- c('all', 'blood', 'kidney', 'leg', 'bone', 'arm', 'pancrea', 'uter', 'ovar', 'bone_marrow', 'lymph_node', 'head', 'neck', 'skin', 'thym', 'colo', 'rect', 'stomach', 'liver', 'lung', 'esophag', 'cervix', 'brain', 'bladder', 'testes', 'spinal', 'anus', 'peni', 'saliv', 'mouth', 'thyroid', 'intestine', 'muscle', 'heart', 'uterus', 'prosta', 'eye', 'vulva', 'bile_duct')
-
-tissues <- c('breast', 'lung', 'lung')
 
 input_dir <- 'mobility_lists/whole_lists/'
 output_dir <- 'mobility_lists/prioritized_lists/' # directory in which resulting lists are saved
@@ -37,10 +34,10 @@ Bailey_et_al_known_genes <- read.table(Bailey_et_al_known_genes_file , header=T,
 
 for(cti in 1:length(cancer_types)){
   ct <- cancer_types[cti]
+  beta <- beta_values[cti]
+  
   print(paste('==============Cancer type:', ct, sep=' '))
- 
-  tissue <- tissues[cti]
- 
+
   COSMIC_known_genes_file <- paste(paste('../gene_lists/known_genes/COSMIC_v90_membership', ct, variant_type, sep='_'), 'csv', sep='.')
   ct_COSMIC_known_genes <- read.table(COSMIC_known_genes_file , header=T, stringsAsFactors=F, sep=',')
   ct_Bailey_et_al_known_genes <- Bailey_et_al_known_genes[grepl(ct, Bailey_et_al_known_genes$Cancer),]
@@ -50,7 +47,8 @@ for(cti in 1:length(cancer_types)){
 
     mobility_df = read.table(paste(input_dir, paste(variant_type, ct, ppi_network, 'lcc', tolower(ct), 'mobility_list.csv', sep='_'), sep=''), header=F, col.names=c('gene', 'mobility_score', 'initial_rank', 'final_rank'), stringsAsFactors=F, sep=',')
     
-    mobility_threshold <- 0.25*nrow(mobility_df); final_rank_threshold <- 1000 # pick genes that jumped up 25%+ ranks and ended up in top 1000 list
+    print(paste('Mobility beta value:', beta, sep=' '))
+    mobility_threshold <- beta * nrow(mobility_df); final_rank_threshold <- 1000 # pick genes that jumped up (beta * 100)%+ ranks and ended up in top 1000 list
     upward_mobility_genes <- select_genes(mobility_df, mobility_score_threshold=mobility_threshold, final_rank_threshold=final_rank_threshold)
     print(paste('Number of upward mobility genes [ ', ppi_network, ']:', nrow(upward_mobility_genes), sep=' '))
     print(paste('Upward mobility', ct, 'COSMIC known genes:',  get_known_genes(upward_mobility_genes$gene, ct_COSMIC_known_genes$gene)))

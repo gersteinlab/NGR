@@ -18,9 +18,13 @@ compare_to_a_new_list <- function(new_list_filename, ct_known_gene_list, depmap_
   new_list_no_known <- setdiff(new_list, ct_known_gene_list)
   print(length(new_list_no_known))
 
-  new_method_depmap_df <- cbind(new_list_no_known, get_depmap_df(new_list_no_known, depmap_dir, 'crispr', ct), get_depmap_df(new_list_no_known, depmap_dir, 'rnai', ct))
-
-  print(summary(new_method_depmap_df[, 2:5]))
+  if(length(new_list_no_known) > 0){
+        new_method_depmap_df <- cbind(new_list_no_known, get_depmap_df(new_list_no_known, depmap_dir, 'crispr', ct), get_depmap_df(new_list_no_known, depmap_dir, 'rnai', ct))
+        print(summary(new_method_depmap_df[, 2:5]))
+  } else{
+        print('Empty list.')
+        new_method_depmap_df <- NULL
+  }
   
   return(new_method_depmap_df)
 }
@@ -30,31 +34,33 @@ compare_to_a_new_list <- function(new_list_filename, ct_known_gene_list, depmap_
 library(Dict)
 
 other_methods_lists_dir <- 'gene_lists/other_methods_lists/'
-other_methods_files <- Dict$new(all = paste(other_methods_lists_dir, c("nCOP", "HHotNet-paper"), "_all_list.csv", sep=""),
-                                BRCA = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "Ruffalo", "TIEDIE-linkers-Fig4", "TIEDIE-linkers-Fig5"), "_BRCA_list.csv", sep=""),
-                                CESC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_CESC_list.csv", sep=""),
+other_methods_files <- Dict$new(#all = paste(other_methods_lists_dir, c("nCOP", "HHotNet-paper"), "_all_list.csv", sep=""),
+                                BRCA = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "FDRnet-STRING", "Ruffalo", "TIEDIE-linkers-Fig4", "TIEDIE-linkers-Fig5"), "_BRCA_list.csv", sep=""),
+                                CESC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2", "FDRnet-STRING"), "_CESC_list.csv", sep=""),
                                 CHOL= paste(other_methods_lists_dir, c(""), "_CHOL_list.csv", sep=""),
-                                COAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_COAD_list.csv", sep=""),
-                                ESCA = paste(other_methods_lists_dir, c("HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_ESCA_list.csv", sep=""),
-                                HNSC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING"), "_HNSC_list.csv", sep=""),
-                                KICH = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING"), "_KICH_list.csv", sep=""),
-                                KIRC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_KIRC_list.csv", sep=""),
-                                KIRP = paste(other_methods_lists_dir, c("nCOP"), "_KIRP_list.csv", sep=""),
-                                LIHC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_LIHC_list.csv", sep=""),
-                                LUAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_LUAD_list.csv", sep=""),
-                                LUSC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus"), "_LUSC_list.csv", sep=""),
-                                PRAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_PRAD_list.csv", sep=""),
-                                READ = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_READ_list.csv", sep=""),
-                                STAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING"), "_STAD_list.csv", sep=""),
-                                THCA = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING"), "_THCA_list.csv", sep=""),
-                                UCEC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2"), "_UCEC_list.csv", sep="")) # READ nCOP has 0 genes after filtering Bailey et al genes out so it was removed
+                                COAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2", "FDRnet-STRING"), "_COAD_list.csv", sep=""),
+                                ESCA = paste(other_methods_lists_dir, c("HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus", "FDRnet-STRING"), "_ESCA_list.csv", sep=""),
+                                HNSC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "FDRnet-STRING"), "_HNSC_list.csv", sep=""),
+                                KICH = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "FDRnet-STRING"), "_KICH_list.csv", sep=""),
+                                KIRC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus", "FDRnet-STRING"), "_KIRC_list.csv", sep=""),
+                                KIRP = paste(other_methods_lists_dir, c("nCOP", "FDRnet-STRING"), "_KIRP_list.csv", sep=""),
+                                LIHC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus", "FDRnet-STRING"), "_LIHC_list.csv", sep=""),
+                                LUAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus", "FDRnet-STRING"), "_LUAD_list.csv", sep=""),
+                                LUSC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "HHotNet-consensus", "FDRnet-STRING"), "_LUSC_list.csv", sep=""),
+                                PRAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2", "FDRnet-STRING"), "_PRAD_list.csv", sep=""),
+                                READ = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2", "FDRnet-STRING"), "_READ_list.csv", sep=""),
+                                STAD = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "FDRnet-STRING"), "_STAD_list.csv", sep=""),
+                                THCA = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-STRING", "HHotNet-all-nonsingleton-clusters-STRING", "FDRnet-STRING"), "_THCA_list.csv", sep=""),
+                                UCEC = paste(other_methods_lists_dir, c("nCOP", "HHotNet-largest-cluster-HumanNetv2", "HHotNet-all-nonsingleton-clusters-HumanNetv2", "FDRnet-STRING"), "_UCEC_list.csv", sep="")
+                                )
 ```
 
 ```{r echo=FALSE}
 source('upward_mobility_shareable_functions.R')
 
 ppi_networks <- c('STRING', 'HumanNetv2')
-cancer_types <- c('all', 'BRCA', 'CESC', 'COAD', 'ESCA', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LIHC', 'LUAD', 'LUSC', 'PRAD', 'READ', 'STAD', 'THCA', 'UCEC') # no other lists available for CHOL
+cancer_types <- c('BRCA', 'CESC', 'CHOL', 'COAD', 'ESCA', 'HNSC', 'KICH', 'KIRC', 'KIRP', 'LIHC', 'LUAD', 'LUSC', 'PRAD', 'READ', 'STAD', 'THCA', 'UCEC') # 'all' # no other lists available for CHOL
+beta_values <- c(0.25, 0.2, 0.05, 0.25, 0.15, 0.25, 0.05, 0.2, 0.2, 0.2, 0.25, 0.25, 0.25, 0.15, 0.25, 0.05, 0.25)
 
 variant_type = 'somatic_MC3'
 
@@ -63,12 +69,7 @@ cancerMine_dir <- '../gene_lists/literature/'
 cancerMine_filename <- 'cancermine_collated_v24_May2020.tsv'
 cancerMine_dictionary_filename <- 'cancermine_dictionary_v24.tsv'
 
-#all_tissues <- c('all', 'blood', 'kidney', 'leg', 'bone', 'arm', 'pancrea', 'uter', 'ovar', 'bone_marrow', 'lymph_node', 'head', 'neck', 'skin', 'thym', 'colo', 'rect', 'stomach', 'liver', 'lung', 'esophag', 'cervix', 'brain', 'bladder', 'testes', 'spinal', 'anus', 'peni', 'saliv', 'mouth', 'thyroid', 'intestine', 'muscle', 'heart', 'uterus', 'prosta', 'eye', 'vulva', 'bile_duct')
-
-# tissues <- c('breast', 'lung', 'lung')
-
 input_dir <- 'mobility_lists/whole_lists/'
-output_dir <- 'mobility_lists/prioritized_lists/' # directory in which resulting lists are saved
 
 expr_dir <- 'tcga_results/'
 depmap_dir <- 'gene_lists/dependency/'
@@ -84,9 +85,10 @@ Bailey_et_al_known_genes <- read.table(Bailey_et_al_known_genes_file , header=T,
 
 for(cti in 1:length(cancer_types)){
   ct <- cancer_types[cti]
+  beta <- beta_values[cti]
+  
   print(paste('==============Cancer type:', ct, sep=' '))
   print('Upward Mobility Results:\n')
-  #tissue <- tissues[cti]
   
   #known_genes_file <- paste(paste('../gene_lists/known_genes/COSMIC_v90_membership', ct, variant_type, sep='_'), 'csv', sep='.')
   #if(ct == 'all')
@@ -113,7 +115,8 @@ for(cti in 1:length(cancer_types)){
   
       mobility_df = read.table(paste(input_dir, paste(variant_type, ct, ppi_network, 'lcc', tolower(ct), 'mobility_list.csv', sep='_'), sep=''), header=F, col.names=c('gene', 'mobility_score', 'initial_rank', 'final_rank'), stringsAsFactors=F, sep=',')
       
-      mobility_threshold <- 0.25 * nrow(mobility_df); final_rank_threshold <- 1000 # pick genes that jumped up 25%+ ranks and ended up in top 1000 list
+      print(paste('Mobility beta value:', beta, sep=' '))
+      mobility_threshold <- beta * nrow(mobility_df); final_rank_threshold <- 1000 # pick genes that jumped up (beta * 100)%+ ranks and ended up in top 1000 list
       upward_mobility_genes <- select_genes(mobility_df, mobility_score_threshold=mobility_threshold, final_rank_threshold=final_rank_threshold)
       print(paste('Number of upward mobility genes [ ', ppi_network, ']:', nrow(upward_mobility_genes), sep=' '))
   
@@ -153,21 +156,24 @@ for(cti in 1:length(cancer_types)){
   # compare intersection_df_no_known with other methods' depmap dfs
   ct_other_methods_files <- other_methods_files[ct]
   for(ct_omf in ct_other_methods_files){
-    new_method_df <- compare_to_a_new_list(ct_omf, ct_known_genes, depmap_dir) # depmap df of new list
+    if(grepl('/_', ct_omf) == F) # non-empty file basename
+      new_method_df <- compare_to_a_new_list(ct_omf, ct_known_genes, depmap_dir) # depmap df of new list
   }
 }
 ```
+
 
 ```{r}
 # B: visualization
 
 library(ggplot2)
 library(ggpubr)
+library(plyr)
 
 results_filename <- 'other_methods_results/other_methods_results.csv'
 results <- read.table(results_filename, header=T, sep=',', stringsAsFactors=F, fill=T)
 
-results$Method <- factor(results$Method, levels=c('NGR', 'HHotNet-consensus', 'HHotNet-LC', 'HHotNet-all', 'nCOP')) # reorder legend labels
+results$Method <- factor(results$Method, levels=c('NGR', 'HHotNet-consensus', 'HHotNet-LC', 'HHotNet-all', 'FDRNet', 'nCOP')) # reorder legend labels
 results$Stripe <- mapvalues(results$Cancer_type, unique(results$Cancer_type), rep(c('#FFFFFF', '#E4E4E4'), length(unique(results$Cancer_type))/2)) # stripes
 rect_start <- seq(0, 1*15, 1)+0.5; rect_end <- seq(1, 1*16, 1)+0.5
 results$rect_start <- as.numeric(mapvalues(results$Cancer_type, unique(results$Cancer_type), rect_start))
@@ -175,7 +181,7 @@ results$rect_end <- as.numeric(mapvalues(results$Cancer_type, unique(results$Can
 
 plots = list()
 Metric_values <- c('Mean', 'Median_Percentage')
-yaxis_label <- c('Mean DepMap Score (LogFC)', 'Cell Lines with \n -ve DepMap Score (%)')
+yaxis_label <- c('Mean DepMap Score', 'Negative Impact on Cancer \n Cell Survival (%-based)')
 
 for(i in 1:length(Metric_values)){
   mv <- Metric_values[i]
@@ -190,7 +196,7 @@ for(i in 1:length(Metric_values)){
     facet_grid(cols=vars(Screening_type)) +
     xlab('') +
     ylab(yaxis_label[i]) +
-    scale_fill_manual(values = c('NGR' = 'darkgreen', 'HHotNet-consensus' = 'navyblue', 'HHotNet-LC' = 'blue2', 'HHotNet-all' = 'skyblue1', 'nCOP' = 'burlywood2')) +
+    scale_fill_manual(values = c('NGR' = 'darkgreen', 'HHotNet-consensus' = 'navyblue', 'HHotNet-LC' = 'blue2', 'HHotNet-all' = 'skyblue1', 'FDRNet' = 'burlywood2', 'nCOP' = 'dimgray')) +
     theme(panel.grid=element_blank(), panel.background=element_rect(fill='white'), axis.ticks.x=element_blank(), axis.title.y=element_text(size=8), axis.text.y=element_text(size=6), axis.text.x=element_text(size=6, vjust=0.5, face='bold', angle=90), legend.position='none'))
 }
 

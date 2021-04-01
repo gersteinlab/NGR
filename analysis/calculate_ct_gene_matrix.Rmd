@@ -37,7 +37,7 @@ rownames(ct_gene_dm) <- ct_gene_df$gene
 library(RColorBrewer)
 heatmap(ct_gene_dm, scale='none', col=colorRampPalette(brewer.pal(9, 'Blues'))(256), cexRow=0.3) # build matrix for heatmap
 
-# 237 genes in total, 41 are in 10+ cancer types, 196 in 1-9 (83 in 1 cancer type, 113 in 2-9)
+# 230 genes in total, 38 are in 10+ cancer types, 192 in 1-9 (76 in 1 cancer type, 116 in 2-9)
 ```
 
 ```{r}
@@ -64,6 +64,15 @@ melted_multicancer_ct_gene_dm$end <- rep(multicancer_chr_end, length(ordered_can
 melted_multicancer_ct_gene_dm$chr <- 'hs1'
 melted_multicancer_ct_gene_dm <- melted_multicancer_ct_gene_dm[, c('chr', 'start', 'end', 'value', 'X1', 'X2')]
 
+# karyotype file
+# concatenate part 1 and part 2 per details below
+# for part 1: replace chromosome widths and cancer types (after MULTICANCER) manually AS PER ORDER in ordered_cancer_types
+# part 2 (for MULTICANCER heatmap layout) file below
+melted_multicancer_ct_gene_dm$band <- 'band'
+melted_multicancer_ct_gene_dm$color <- 'green'
+write.table(melted_multicancer_ct_gene_dm[1:length(ordered_multicancer_genes), c('band', 'chr', 'X1', 'X1', 'start', 'end', 'color')], "karyotype_part2.txt", col.names=F, row.names=F, quote = F, sep=" ")
+
+# heatmap files
 for(i in 1:length(ordered_cancer_types)){
   ct <- ordered_cancer_types[i]
   ct_circos_heatmap_data <- melted_multicancer_ct_gene_dm[melted_multicancer_ct_gene_dm$X2 == ct, 1:4]
@@ -93,7 +102,9 @@ for(i in 1:length(ordered_cancer_types)){
     ct_specific_label_data <- rbind(ct_specific_label_data, current_ct_label_data)
 }
 
-# write label data file
+# write label data files
+# manually concatenate parts 1 (multicancer) and 2 (ct_specific)
+write.table(melted_multicancer_ct_gene_dm[1:length(ordered_multicancer_genes), c('chr', 'start', 'end', 'X1')], 'labels.upward.mobility.genes.multicancer.txt', row.names=F, col.names=F, quote=F, sep=' ')
 write.table(ct_specific_label_data, 'labels.upward.mobility.genes.ct_specific.txt', row.names=F, col.names=F, quote=F, sep=' ')
 ```
 
