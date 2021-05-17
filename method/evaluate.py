@@ -7,9 +7,9 @@ def main():
     # Mobility List Batch Generation
     #eval.generate_batch_gene_mobility_lists(uids_filename)
 
-    # Hypergeometric test regults generation
-    eval.generate_batch_hypergemetric_pvalues(uids_filename)
-    
+    # Mann-Whitney U one-sided test (i.e. Wilcoxon rank sum test) of ranks result generation
+    eval.generate_batch_pvalues(uids_filename)
+
 main()
 
 

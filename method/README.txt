@@ -10,5 +10,5 @@ sbatch generate_all_mobility_lists.sh
 # to generate prioritized mobility lists used in results, in ../analysis/:
 Run mobility_lists_analysis.Rmd
 
-# to generate hypergemetric results, uncomment the hypergemetric results block in evalaute.py then in method/, run:
-python evaluate.py > results/hypergemetric_test_results.txt
+# to generate Mann-Whitney U one-sided test results for ranks, uncomment the generate_batch_pvalues() block in evalaute.py then in method/, run:
+python evaluate.py > results/mann_whitney_U_onesided_test_of_ranks_results.txt

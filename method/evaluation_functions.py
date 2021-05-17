@@ -2,7 +2,7 @@ import numpy as np
 import scipy.stats as st
 from scipy.spatial import distance
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, precision_score, recall_score, precision_recall_curve, auc
-from scipy.stats import hypergeom, rankdata
+from scipy.stats import hypergeom, mannwhitneyu, rankdata
 
 import helper_functions as hp
 from scipy.constants.codata import precision
@@ -93,7 +93,7 @@ def compare_lists(ranked_score_lists, gold_standard_file, list_names, cancer_typ
                 known_genes_file = '../gene_lists/known_genes/COSMIC_v90_membership.csv'
                 known_genes = np.genfromtxt(known_genes_file, delimiter=',', skip_header=1, dtype='U25,i4', names=('gene','score'))
 
-                S = int(0.1 * N) #int(0.025 * N) # sample size
+                S = int(0.1 * N) #int(0.1 * N) # sample size
  
                 sample_common_known_genes = np.intersect1d(known_genes['gene'], ranked_scores[id_colname][0:S])
                 x = len(sample_common_known_genes) # number of "successes" in the sample of size N
@@ -107,7 +107,20 @@ def compare_lists(ranked_score_lists, gold_standard_file, list_names, cancer_typ
                     score = 1
 
                 print('{0}, {1}, {2}, {3}. P-val: {4}'.format(N, n, S, x, pval), end=" ")
+            elif cm == 'Mann-Whitney-U-less_test':
+                ranked_genes = ranked_scores[id_colname]
                 
+                known_genes_file = '../gene_lists/known_genes/COSMIC_v90_membership.csv'
+                known_genes = np.genfromtxt(known_genes_file, delimiter=',', skip_header=1, dtype='U25,i4', names=('gene','score'))                
+                known_genes_set = set(known_genes['gene'])
+                
+                known_genes_ranks = [i for i, e in enumerate(ranked_genes) if e in known_genes_set]
+
+                U, pval = mannwhitneyu(known_genes_ranks, np.arange(0, ranked_genes.shape[0]), use_continuity=True, alternative='less')
+                score = pval
+                if pval < 0.05:
+                    score = 1
+
             score = round(score, 3)
             print('{0: <20}'.format(score), end="")
 
@@ -166,7 +179,8 @@ def generate_gene_mobility_list(initial_matrix, ngr_matrix, gene_index):
 # All evaluation functions below assume lists are sorted in decreasing order; each input list is 1-D (i.e. a column from the structured array used in compare_lists() above
 # In these functions, a list is 1-D
 
-def generate_batch_hypergemetric_pvalues(uids_filename):
+# Statistican test is either Mann-Whitney U one-sided test (default) or Hypergeometric test in the top 10% of genes ('Hypergeom_test')
+def generate_batch_pvalues(uids_filename, statistical_test = 'Mann-Whitney-U-less_test'):
     matrices_dir = 'results/score_matrices/'
     ppi_matrix_dir = '../ppi/code/results/'
     genomics_matrix_dir = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'
@@ -196,9 +210,8 @@ def generate_batch_hypergemetric_pvalues(uids_filename):
         # ngr scores in a structured array
         ngr_scores = hp.process_ngr_results(ngr_score_matrix, ppi_matrix_index, save_files=False, uid=uid) 
 
-        compare_lists((ngr_scores, ngr_scores), gold_standard_file, ('Tissue-PPI', 'Tissue-PPI-Redundant'), cancer_type=cancer_type, variant_type=variant_type, comp_measures=('Accuracy', 'Hypergeom_test'))
-        
-        
+        compare_lists((ngr_scores, ngr_scores), gold_standard_file, ('Tissue-PPI', 'Tissue-PPI-Redundant'), cancer_type=cancer_type, variant_type=variant_type, comp_measures=('Accuracy', statistical_test))
+     
 # calculates Eucliden or Manhattan distance between ranks of elements in two ordered lists
 def distance_measure(input_list1, input_list2, measure='manhattan_dist'):
     ranks1, ranks2 = hp.rank_ranked_lists_relatively(input_list1, input_list2)
