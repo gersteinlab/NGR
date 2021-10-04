@@ -5,7 +5,7 @@
 #SBATCH --mem=55GB
 #SBATCH --time=6-23:59:59
 
-declare -a cancer_types=('BRCA' 'CESC' 'COAD' 'HNSC' 'KIRC' 'KIRP' 'LIHC' 'LUAD' 'LUSC' 'PRAD' 'STAD' 'THCA' 'UCEC' 'CHOL' 'KICH' 'ESCA' 'READ') 
+declare -a cancer_types=('BRCA' 'CESC' 'CHOL' 'COAD' 'ESCA' 'HNSC' 'KICH' 'KIRC' 'KIRP' 'LIHC' 'LUAD' 'LUSC' 'READ' 'PRAD' 'STAD' 'THCA' 'UCEC');
 declare -a ppi_networks=('STRING' 'HumanNetv2');
 
 date

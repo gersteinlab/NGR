@@ -126,8 +126,7 @@ def compare_lists(ranked_score_lists, gold_standard_file, list_names, cancer_typ
 
 ## EVALUATION FUNCTIONS:
 
-# MOBILITY LIST FUNCTIONS
-# generated mobility lists across variant types, cancer types, ppis and ppi_levels
+# generates mobility lists across variant types, cancer types, and ppis
 def generate_batch_gene_mobility_lists(uids_filename):
     matrices_dir = 'results/score_matrices/'
     ppi_matrix_dir = '../ppi/code/results/'
@@ -175,13 +174,65 @@ def generate_gene_mobility_list(initial_matrix, ngr_matrix, gene_index):
     
     return mobility_list
 
+# generates hub_normalized lists across variant types, cancer types, and ppis
+def generate_batch_hub_normalized_lists(composite_uids_filename):
+    matrices_dir = 'results/score_matrices/'
+    ppi_matrix_dir = '../ppi/code/results/'
+    genomics_matrix_dir = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'
+    output_dir = 'results/hub_normalized_lists/whole_lists/'
+    
+    composite_uids_file = open(composite_uids_filename, 'r')
+    lines = composite_uids_file.readlines()
+
+    for l in lines:
+        values = l.split(' ')
+        variant_type = values[0]
+        cancer_type = values[1]
+        ppi_network = values[2]
+        ppi_level = values[3]
+        ngr_uid = values[4].strip()
+        ngr_alpha_uid = values[5].strip() # uid of ngr matrix with alpha = 1
+        
+        print('\n[{0}, {1}, {2}, {3} started. UID: {4}, UID alpha: {5}.]'.format(variant_type, cancer_type, ppi_network, ppi_level, ngr_uid, ngr_alpha_uid))
+                          
+        output_pickle = matrices_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_'+ngr_uid+'_score_matrix.pkl'
+        ngr_score_matrix = pickle.load(open(output_pickle, "rb"))
+
+        alpha_output_pickle = matrices_dir+'hub_normalized/'+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_'+ngr_alpha_uid+'_score_matrix.pkl'
+        ngr_alpha_score_matrix = pickle.load(open(alpha_output_pickle, "rb"))
+        
+        ppi_matrix_prefix = ppi_matrix_dir+ppi_network+'_converted_matrix'
+        genomics_matrix_prefix = genomics_matrix_dir+variant_type+'_'+cancer_type+'_matrix'
+        
+        ppi_matrix, ppi_matrix_index, extended_ppi_matrix_prefix, genomics_matrix, genomics_matrix_row_index, genomics_matrix_col_index = hp.get_ngr_inputs(genomics_matrix_prefix, ppi_matrix_prefix, genomics_matrix_transformed=True, largest_cc=True, ppi_cancer_type=cancer_type, matrix_normalization_method='insulated_diffusion')
+
+        hub_normalized_list = generate_hub_normalized_list(ngr_score_matrix, ngr_alpha_score_matrix, genomics_matrix_row_index)
+        hub_normalized_list_filename = output_dir+variant_type+'_'+cancer_type+'_'+ppi_network+'_lcc_'+cancer_type.lower()+'_hub_normalized_list.csv'
+        
+        np.savetxt(hub_normalized_list_filename, np.stack((hub_normalized_list['gene'], hub_normalized_list['hub_normalized_score'], hub_normalized_list['ngr_score'], hub_normalized_list['ngr_alpha_score']), axis=1), fmt='%s', delimiter=',')
+
+        print('\n[{0}, {1}, {2}, {3} hub-normalized list saved in {4}]'.format(variant_type, cancer_type, ppi_network, ppi_level, hub_normalized_list_filename))
+        
+# generates a gene list after edge-normalizing to account for hubs: divide post-propagation score 
+# by the same score when alpha = 1 (i.e. when initial scores aren't involved and focus is on network topology)
+def generate_hub_normalized_list(ngr_matrix, ngr_alpha_matrix, gene_index):
+    ngr_scores = np.mean(ngr_matrix, axis=1)
+    ngr_alpha_scores = np.mean(ngr_alpha_matrix, axis=1)
+
+    hub_normalized_score = (ngr_scores / ngr_alpha_scores)
+    
+    hub_normalized_list = np.array(list(zip(gene_index, hub_normalized_score, ngr_scores, ngr_alpha_scores)), dtype=[('gene', 'U25'), ('hub_normalized_score', 'f8'), ('ngr_score', 'f8'), ('ngr_alpha_score', 'f8')])
+    hub_normalized_list = np.flip(np.sort(hub_normalized_list, order=['hub_normalized_score']))
+
+    return hub_normalized_list
+
 # LIST COMPARISON FUNCTIONS
 # All evaluation functions below assume lists are sorted in decreasing order; each input list is 1-D (i.e. a column from the structured array used in compare_lists() above
 # In these functions, a list is 1-D
 
 # Statistican test is either Mann-Whitney U one-sided test (default) or Hypergeometric test in the top 10% of genes ('Hypergeom_test')
 def generate_batch_pvalues(uids_filename, statistical_test = 'Mann-Whitney-U-less_test'):
-    matrices_dir = 'results/score_matrices/'
+    matrices_dir = 'results/score_matrices/channels_experiments/'
     ppi_matrix_dir = '../ppi/code/results/'
     genomics_matrix_dir = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'
     gold_standard_file = '../gene_lists/code/results/gold_standard_lists/cancerMine_both_depmap_both_values_mean_scores_breast_tissue.csv' # used only to run the function successfully

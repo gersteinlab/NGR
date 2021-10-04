@@ -2,13 +2,16 @@ import helper_functions as hp
 import evaluation_functions as eval
 
 def main():
-    uids_filename = 'results/score_matrices/uids.txt'
+    uids_filename = 'results/score_matrices/hub_normalized_composite_uids.txt'
     
     # Mobility List Batch Generation
-    #eval.generate_batch_gene_mobility_lists(uids_filename)
+    eval.generate_batch_gene_mobility_lists(uids_filename)
 
+    # Hub-normalized List Batch Generation
+    #eval.generate_batch_hub_normalized_lists(uids_filename)
+    
     # Mann-Whitney U one-sided test (i.e. Wilcoxon rank sum test) of ranks result generation
-    eval.generate_batch_pvalues(uids_filename)
+    #eval.generate_batch_pvalues(uids_filename)
 
 main()
 

@@ -3,6 +3,7 @@ import evaluation_functions as eval
 
 import numpy as np
 import datetime
+from scipy.constants.constants import alpha
 
 # If revisited: 
 # Might want to handle ties in terms of same initial score: i.e. assign same initial score the same rank and adjust T beta value accordingly
@@ -16,6 +17,13 @@ def run(M, W, alpha=0.8):
     i = 0; epsilon = 1 / np.power(10, 6); max_iterations = 350
     M0 = M; M_delta = epsilon
 
+    # shuffle values in M0 within each sample (i.e. col)
+    #for j in range(M0.shape[1]):
+    #    np.random.shuffle(M0[:, j])
+    #print('Shuffling done.'.format(datetime.datetime.now()))
+    
+    print('Alpha value: {0}'.format(alpha))
+    
     print('{0}\nPropagation in progress...'.format(datetime.datetime.now()))
     while M_delta >= epsilon and i < max_iterations:
         previous = M

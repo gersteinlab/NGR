@@ -6,7 +6,9 @@
 
 # To generate the (final mobility list + driver or COSMIC) gene membership (+ initial score before diffusion) matrix used in creating ppi analysis figure, run generate_gene_lists.Rmd
 
-# To generate other methods lists (FDRnet, Hierarchical HotNet and Katz), run sbatch dsq-FDRnet_NGR_jobs-2021-03-30.sh, sbatch dsq-HHotNet_NGR_jobs-2020-11-05.sh and generate_other_methods_lists.pynb
+# To generate other methods (except PageRank) lists (FDRnet, Hierarchical HotNet and Katz), run sbatch dsq-FDRnet_NGR_jobs-2021-03-30.sh, sbatch dsq-HHotNet_NGR_jobs-2020-11-05.sh and generate_other_methods_lists.pynb
+
+# To generate PageRank lists, run generate_PageRank_lists.Rmd
 
 # To compare NGR lists to other methods lists (generated and manually curated ones), run compare_with_other_methods_lists.Rmd
 

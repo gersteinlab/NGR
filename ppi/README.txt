@@ -12,10 +12,10 @@ awk '{if($12 > 800 || FNR == 1){print $0}}' 9606.protein.links.full.notextmining
 awk '{print $1 " " $2 " " $12}' STRING_9606.protein.links.full.notextmining.nodatabase.edgescore.800upwards.v11.0.txt > STRING_9606.protein.links.notextmining.nodatabase.edgescore.800upwards.v11.0.txt
 
 # Select high quality edges in STRING (combined_score > 700)
-awk '{if($12 > 700 || FNR == 1){print $0}}' STRING_9606.protein.links.full.v11.0.txt > STRING_9606.protein.links.full.edgescore.700upwards.v11.0.txt
+awk '{if($16 > 700 || FNR == 1){print $0}}' STRING_9606.protein.links.full.v11.0.txt > STRING_9606.protein.links.full.edgescore.700upwards.v11.0.txt
 
 # Convert resulting STRING network into a edgelist file (with 3 columns)
-awk '{print $1 " " $2 " " $12}' STRING_9606.protein.links.full.edgescore.700upwards.v11.0.txt > STRING_9606.protein.links.edgescore.700upwards.v11.0.txt
+awk '{print $1 " " $2 " " $16}' STRING_9606.protein.links.full.edgescore.700upwards.v11.0.txt > STRING_9606.protein.links.edgescore.700upwards.v11.0.txt
 
 Sort STRING edges (optional):
 cat STRING_9606.protein.links.edgescore.700upwards.v11.0.txt | awk 'NR<2{print $0;next}{print $0| "sort -k 12,12nr"}' > temp.txt

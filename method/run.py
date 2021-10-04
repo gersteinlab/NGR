@@ -16,8 +16,8 @@ parser.add_argument("--ct", help="cancer type")
 parser.add_argument("--ppi", help="ppi network")
 args = parser.parse_args()
 
-cancer_type = 'LUAD' 
-ppi_network='HumanNetv2'
+cancer_type = 'ESCA' 
+ppi_network='STRING_ppi_database'
 
 if args.ct:
     cancer_type = args.ct
@@ -27,7 +27,7 @@ if args.ppi:
     ppi_network = args.ppi
     print("PPI network set to {}".format(ppi_network))
 
-variant_type = 'somatic_MC3';  output_dir='results/score_matrices/'; output_filename_suffix = 'lcc_'+cancer_type.lower()    
+variant_type = 'somatic_MC3';  output_dir='results/score_matrices/hub_normalized/'; output_filename_suffix = 'lcc_'+cancer_type.lower()    
 ppi_matrix_prefix = '../ppi/code/results/'+ppi_network+'_converted_matrix'
 genomics_matrix_prefix = '../tcga/cortex_data/variant_data/annovar/results/matrix_results/'+variant_type+'_'+cancer_type+'_matrix'
 
@@ -50,8 +50,9 @@ def main():
     #ppi_matrix = hp.normalize_matrix(ppi_matrix, ppi_matrix_prefix+'_'+output_filename_suffix, normalization='insulated_diffusion') # normalize matrix after adding new edges
     '''
     
-    # run method    
-    ngr_score_matrix = ngr.run(M=genomics_matrix, W=ppi_matrix)
+    # run method
+    alpha_value = 0.8 
+    ngr_score_matrix = ngr.run(M=genomics_matrix, W=ppi_matrix, alpha=alpha_value)
     pickle.dump(ngr_score_matrix, open('_'.join([output_dir+variant_type, cancer_type, ppi_network, output_filename_suffix, uid, 'score_matrix.pkl']), 'wb'))
  
     '''
